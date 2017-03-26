@@ -27,10 +27,10 @@ each should be run from root directory: e.g. `$ utils/setup.sh`
     + Install community edition
     + Start Neo4j and set a default path
     + Navigate to localhost:7474 to set username and password
-    + Add the following to ~/.bash_profile
-`export NEO4J_PASSWORD='<neo4j_password>'
-export NEO4J_USERNAME='<neo4j_username>'
-export NEO4J_PATH="/Users/<your_username>/<your_neo4j_path>/neo4j/"`
+    + Add the following to ~/.bash_profile`
+    export NEO4J_PASSWORD='<neo4j_password>'
+    export NEO4J_USERNAME='<neo4j_username>'
+    export NEO4J_PATH="/Users/<your_username>/<your_neo4j_path>/neo4j/"`
 * tobbl
     + Run `$ utils/setup.sh` to install
     + Run `$ utils/launch.sh` to start server
