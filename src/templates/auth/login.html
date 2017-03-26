@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% import 'bootstrap/wtf.html' as wtf %}
+
+{% block title %}Login - ga.io{%  endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Login</h1>
+</div>
+<div class="'col-md-4">
+    {{ wtf.quick_form(login_form) }}
+</div>
+<p>Or <a href={{ url_for("auth.register") }}>register</a></p>
+{%  endblock %}

@@ -1,0 +1,12 @@
+
+svg.project_explorer {
+    width: 100%;
+    height: calc(100% - 33px);
+    position:fixed;
+    top: 30px;
+    left: 2px;
+}
+
+.link-label {
+    font-size: 14px;
+}
