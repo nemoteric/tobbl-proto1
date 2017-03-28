@@ -2,35 +2,27 @@ from . import threads
 from datetime import datetime
 from flask import render_template, redirect, url_for, flash, jsonify, request
 from flask_login import login_required, current_user
-from .forms import NewThread
-from ..models import get_nodes
-from .. import db, session
+from ..tools import get_nodes, get_uid
 
 
-# @threads.route('/new', methods=['GET','POST'])
-# @login_required
-# def new_thread():
-#     if request.form:
-#         print(request.form)
-#         thread = make_thread({'author': current_user.username,
-#                                       'body': request.form['question'],
-#                                       'malleable': request.form['malleable']})
-#         for el in request.form:
-#             if 'choice' in el:
-#                 make_choice({'body': request.form[el],
-#                              'thread_id': thread['id'],
-#                              'author': current_user.username})
-#         return redirect('/thread/' + str(thread['id']))
-#     return render_template('threads/new.html',
-#                            title='New Thread')
 
+@threads.route('/new', methods=['GET','POST'])
+@login_required
+def new_thread():
+    thread_id = get_uid('Thread')
+    thread = get_nodes('MERGE (t:Thread {id: {id}}) RETURN t', {'id': int(thread_id)})
+    return redirect('thread/%i' %thread_id)
 
-@threads.route('/', methods=['GET','POST'])
-def view_thread():
-    # thread = get_nodes('MATCH (t:Thread) WHERE t.id={id} RETURN t LIMIT 1', {'id': int(thread_id)})
-
-    # if thread:
-    return render_template('threads/thread.html')
+@threads.route('/<thread_id>', methods=['GET','POST'])
+@login_required
+def view_thread(thread_id):
+    thread = get_nodes('MATCH (t:Thread) WHERE t.id={id} RETURN t LIMIT 1', {'id': int(thread_id)})
+    if thread:
+        print('thread')
+        return render_template('threads/thread.html')
+    else:
+        flash('Thread does not exist')
+        return render_template('main/home.html')
 
     # else:
     #     flash('The requested thread doesn\'t exist')

@@ -6,7 +6,7 @@ from src.main import main
 @main.route('/')
 @login_required
 def home():
-    return render_template('main/index.html')
+    return render_template('main/home.html')
 
 
 @main.route('/test')

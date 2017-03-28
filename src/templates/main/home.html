@@ -1,0 +1,17 @@
+{% extends '/base.html' %}
+
+{% block head %}
+    {{ super() }}
+    <script type="text/javascript" src="{{ url_for('static',filename='scripts/home.js') }}"></script>
+    <script type="text/javascript" charset="utf-8">
+        $(document).ready(function(){
+            document_ready()
+        })
+    </script>
+{% endblock %}
+
+{% block content %}
+    Go to a thread:
+    <div id="threads"></div>
+    or start a <a href="/thread/new">new thread</a>
+{% endblock %}

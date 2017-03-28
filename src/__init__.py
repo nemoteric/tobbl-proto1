@@ -21,14 +21,14 @@ session = driver.session()
 ## Establish constraints on neo4j database
 session.run('CREATE CONSTRAINT ON (u:User) '
             'ASSERT u.username IS UNIQUE')
-session.run('CREATE CONSTRAINT ON (t:Thread) '
-            'ASSERT t.id IS UNIQUE')
-session.run('CREATE CONSTRAINT ON (r:Response) '
-            'ASSERT r.id IS UNIQUE')
-session.run('CREATE CONSTRAINT ON (p:Prompt) '
-            'ASSERT p.id IS UNIQUE')
-session.run('CREATE CONSTRAINT ON (c:Comment) '
-            'ASSERT c.id IS UNIQUE')
+# session.run('CREATE CONSTRAINT ON (t:Thread) '
+#             'ASSERT t.id IS UNIQUE')
+# session.run('CREATE CONSTRAINT ON (r:Response) '
+#             'ASSERT r.id IS UNIQUE')
+# session.run('CREATE CONSTRAINT ON (p:Prompt) '
+#             'ASSERT p.id IS UNIQUE')
+# session.run('CREATE CONSTRAINT ON (c:Comment) '
+#             'ASSERT c.id IS UNIQUE')
 
 auth = Blueprint('auth', __name__)
 lm = LoginManager()

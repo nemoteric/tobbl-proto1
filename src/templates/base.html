@@ -3,7 +3,7 @@
   <head>
     {% block title %}
         {% if title %}
-            <title>{{ title }} - ga.io</title>
+            <title>tobbl - {{ title }}</title>
         {% else %}
              <title>tobbl</title>
         {% endif %}
@@ -28,8 +28,9 @@
             {% endif %}
         </div>
 
-    <div class="content">
+    <div id="content">
         {% block content %}
+
         {% endblock %}
     </div>
 
