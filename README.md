@@ -17,10 +17,6 @@ each should be run from root directory: e.g. `$ utils/setup.sh`
     + no email authentication system
 * Thread function
     + create threads
-    + make choices
-    + respond to choices with support or challenge
-    + respond to responses with support or challenge
-    + all clicks are weighted with proprietary formula
     
 ## Setup
 * Neo4j
