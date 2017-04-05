@@ -63,7 +63,14 @@ function insert_post(post){
     post_time.setUTCSeconds(post['time']);
     var current_time = new Date();
     // console.log(current_time.);
-    var time = post_time;
+
+    var time = "%H%:%M%:%s% %m%/%d%/%y%";
+    var elems = {'%H%': post_time.getHours(), '%M%': post_time.getMinutes(), '%s%': post_time.getSeconds(),
+                 '%m%': post_time.getMonth(), '%d%': post_time.getDate(), '%y%': post_time.getYear()};
+
+    time = time.replace(/%\w+%/g, function(all) {
+        return elems[all] || all;
+    });
 
     console.log(post_time);
     $(  `<div class="post" id="${post['id']}">` +
