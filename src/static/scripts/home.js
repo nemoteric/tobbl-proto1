@@ -25,9 +25,9 @@ function render_home(json){
     var thread_div = document.getElementById("threads");
     var threads = json;
 
-    for (var thread in threads){
-        console.log(thread);
-        $(`<div><a href="/thread/${thread}">${thread}</a></div>`).appendTo(thread_div);
+    for (var key in threads){
+        console.log(threads[key]['id']);
+        $(`<div><a href="/thread/${threads[key]['id']}">${threads[key]['id']}</a></div>`).appendTo(thread_div);
     }
 
 }

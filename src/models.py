@@ -1,7 +1,6 @@
 from flask_login import UserMixin, current_user
 from src import db, session, lm
 from werkzeug.security import generate_password_hash, check_password_hash
-from operator import itemgetter
 
 # System
 @lm.user_loader

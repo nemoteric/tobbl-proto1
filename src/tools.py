@@ -1,4 +1,5 @@
 from src import db, session, lm
+from operator import itemgetter
 
 # neo4j
 def get_uid(type):
@@ -6,9 +7,9 @@ def get_uid(type):
         "ON CREATE SET id.count = 1 " + \
         "ON MATCH SET id.count = id.count + 1 " + \
         "RETURN id "
-    return get_nodes(query, {'type': type})['count']
+    return get_nodes(query, {'type': type})[0]['count']
 
-def get_nodes(query, params=None, sortby=None, reverse=True, format=None,
+def get_nodes(query, params=None, sortby=None, reverse=False, format=None,
               labels=False, relationships=False, clicks=True):
     query_results = list(session.run(query, params))
     results = [item[0].properties for item in query_results]
@@ -31,8 +32,8 @@ def get_nodes(query, params=None, sortby=None, reverse=True, format=None,
                 dict[item['id']] = item
 
         results = dict
-    if len(results)==1 and isinstance(results, list):
-        return results[0]
+    # if len(results)==1 and isinstance(results, list):
+    #     return results[0]
     return results
 
 def get_node_property(query, data, prop):

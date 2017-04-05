@@ -13,10 +13,17 @@
 
 
 {% block content %}
-    <div class="main">
-        <div id="content">
-
-        </div>
+    <div id="meta">
+        <h2 id="title">This is a thread</h2>
     </div>
+
+    <div id="posts">
+    </div>
+
+    <div id="reply_box">
+        <textarea rows="2" cols="100" placeholder="Reply" ></textarea>
+        <button id="submit_post" onclick="submit_post()">Post</button>
+    </div>
+
 {% endblock %}
 
