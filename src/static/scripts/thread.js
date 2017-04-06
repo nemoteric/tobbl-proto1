@@ -64,8 +64,8 @@ function insert_post(post){
     var current_time = new Date();
     // console.log(current_time.);
 
-    var time = "%H%:%M%:%s% %m%/%d%/%y%";
-    var elems = {'%H%': post_time.getHours(), '%M%': post_time.getMinutes(), '%s%': post_time.getSeconds(),
+    var time = "%H%:%M% %m%/%d%/%y%";
+    var elems = {'%H%': post_time.getHours(), '%M%': post_time.getMinutes(),// '%s%': post_time.getSeconds(),
                  '%m%': post_time.getMonth(), '%d%': post_time.getDate(), '%y%': post_time.getYear()};
 
     time = time.replace(/%\w+%/g, function(all) {
@@ -75,12 +75,17 @@ function insert_post(post){
     console.log(post_time);
     $(  `<div class="post" id="${post['id']}">` +
         `   <div class="score_box">` +
-        `       <button onclick="upvote(${post['id']})">+</button>` +
-        `       <t id="score" class="post_score">${post['score']}</t>` +
+        `      <button onclick="upvote(${post['id']})">+</button><br>` +
+        `      <t id="score" class="post_score">${post['score']}</t>` +
         `   </div>` +
-        `   <t id="author" >${post['author']}:</t>` +
-        `   <t class="post_body">${post['body']}</t>` +
-        `   <t class="post_time">${time}</t>` +
+        `   <div class="post_body">` +
+        `      <a class="post_id">${post['id']}:</a>` +
+        `      <t class="post_body">${post['body']}</t>` +
+        `   </div>` +
+        `   <div class="post_footer">`+
+        `      <a href="/user/${post['author']}" id="author">${post['author']}:</a>` +
+        `      <t class="post_time">${time}</t>` +
+        `   </div>` +
         `</div>`
     ).appendTo(post_div);
 }
