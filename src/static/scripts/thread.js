@@ -18,7 +18,6 @@ function document_ready(){
     });
 
     socket.on('new_post', function(post){
-        console.log(post);
         insert_post(post)
     });
 

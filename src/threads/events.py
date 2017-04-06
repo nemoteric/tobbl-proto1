@@ -17,7 +17,6 @@ def render_thread(thread_id):
 
 @socketio.on('new_post', namespace='/_thread')
 def new_post(json):
-    print(current_user.username)
     post = get_nodes("MATCH (t:Thread {id: {thread_id}}), (u:User {username: {username}}) " + \
                      "CREATE (t)-[:CONTAINS]->(p:Post { props })<-[:AUTHOR]-(u) " + \
                      "SET p.score = 0 " + \
