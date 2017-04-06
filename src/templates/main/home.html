@@ -2,6 +2,7 @@
 
 {% block head %}
     {{ super() }}
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='styles/home.css') }}">
     <script type="text/javascript" src="{{ url_for('static',filename='scripts/home.js') }}"></script>
     <script type="text/javascript" charset="utf-8">
         $(document).ready(function(){
@@ -11,7 +12,28 @@
 {% endblock %}
 
 {% block content %}
-    Go to a thread
-    <div id="threads"></div>
+    Click on your favourite topic
+    <div class="style">
+        Top Social
+        <a href="/thread/ocean">ocean</a>
+        <a href="/thread/LGBT">LGBT</a>
+        <a href="/thread/Abuse">Abuse</a>
+    </div>
+    <div class=".style">
+        Top Political
+        <a href="/thread/immigrants">Immigrants</a>
+        <a href="/thread/Border">Boreder</a>
+        <a href="/thread/H1B">H1B</a>
+    </div>
+    <div class=".style">
+        Top Economic
+        <a href="/thread/Tax">Tax</a>
+        <a href="/thread/Pension">Pension</a>
+        <a href="/thread/EqualPay">Pay</a>
+    </div>
+    <div class=".style">
+        Others
+        <a href="/thread/Terrorism">Terrorism</a>
+    </div>
     or start a <a href="/thread/new">new thread</a>
 {% endblock %}
