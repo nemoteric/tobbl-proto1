@@ -9,10 +9,10 @@ def home():
     return render_template('main/home.html')
 
 
-@main.route('/test')
-def test():
-    return render_template('test.html')
-
-@main.route('/search' )
-def test():
-    return render_template('test.html')
+# @main.route('/test')
+# def test():
+#     return render_template('test.html')
+#
+# @main.route('/search' )
+# def test():
+#     return render_template('test.html')
