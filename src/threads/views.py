@@ -5,7 +5,6 @@ from flask_login import login_required, current_user
 from ..tools import get_nodes, get_uid
 
 
-
 @threads.route('/new', methods=['GET','POST'])
 @login_required
 def new_thread():
@@ -24,9 +23,6 @@ def view_thread(thread_id):
         flash('Thread does not exist')
         return render_template('main/home.html')
 
-    # else:
-    #     flash('The requested thread doesn\'t exist')
-    #     return redirect('/')
 
 
 # @threads.route('/delete/<thread_id>')

@@ -9,10 +9,12 @@ def home():
     return render_template('main/home.html')
 
 
-@main.route('/test')
-def test():
-    return render_template('test.html')
+## Note: redirecting to 'test.html' will produce an error if it doesn't exist.
 
-@main.route('/search' )
-def test():
-    return render_template('test.html')
+# @main.route('/test')
+# def test():
+#     return render_template('test.html')
+
+# @main.route('/search' )
+# def test():
+#     return render_template('test.html')
