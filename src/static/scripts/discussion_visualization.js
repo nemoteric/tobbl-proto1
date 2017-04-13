@@ -15,7 +15,6 @@ function document_ready(){
     socket.on('render_features', function(data) {
         render_features(data);
     });
-
     socket.on('connect', function() {
         socket.emit(window.location.href);
         console.log(window.location.href)
@@ -28,18 +27,18 @@ function document_ready(){
 var drag_this = d3.drag().subject(this)
         .on('start',function (d) {
             if (d.x1){
-                d.x1 =  d3.event.x - d.xt;
+                // d.x1 =  d3.event.x - d.xt;
                 d.y1 =  d3.event.y - d.yt;
             }else{
-                d.x1 = d3.event.x;
+                // d.x1 = d3.event.x;
                 d.y1 = d3.event.y;
             }
         })
         .on('drag',function(d){
             d3.select(this)
-            .attr("transform", "translate(" + (d3.event.x - d.x1)  + "," + (d3.event.y - d.y1) + ")");
+            .attr("transform", "translate(0," + (d3.event.y - d.y1) + ")");
 
-            d.xt = d3.event.x - d.x1;
+            // d.xt = d3.event.x - d.x1;
             d.yt = d3.event.y - d.y1;
         });
 
