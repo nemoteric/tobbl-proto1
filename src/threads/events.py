@@ -1,4 +1,5 @@
 from .. import socketio
+from .. import session
 from flask_socketio import emit
 from ..tools import get_nodes
 from . import thread_utils
@@ -23,4 +24,17 @@ def new_post(json):
 def upvote(json):
     scores = thread_utils.upvote(json)
     emit('update_scores', scores)
+
+
+@socketio.on('render_features', namespace='/_thread')
+def render_thread(json):
+    results = get_nodes("MATCH (I:Post {id: {id}})<-[r:RESOLVE]-(R:Post) RETURN I,R",
+                        {'id': int(json['question_id'])})
+
+    nodes = [results[0][0]] + [res[1] for res in results]
+    edges = [{'source': res[1]['id'], 'target': res[0]['id'], 'type': 'Answer'} for res in results]
+
+    print(nodes)
+
+    emit('render_features', {'nodes': nodes,'edges': edges})
 
