@@ -1,5 +1,6 @@
 from src import db, session, lm
 from operator import itemgetter
+from functools import reduce
 
 # neo4j
 def get_uid(type):
