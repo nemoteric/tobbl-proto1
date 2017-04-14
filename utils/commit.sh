@@ -1,7 +1,8 @@
 #!/bin/bash
 
 ## remove all __pycache__ files
-find . | grep -E "(__pycache__|\.pyc|\.pyo$)" | xargs rm -rf
+find . -name '*.pyc' | xargs -n 1 git rm --cached
+find . -name '__pycache__' | xargs -n 1 git rm --cached
 
 git add *
 git rm -rf --cached migrations
