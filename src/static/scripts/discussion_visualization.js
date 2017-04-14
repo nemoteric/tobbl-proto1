@@ -27,18 +27,18 @@ function document_ready(){
 var drag_this = d3.drag().subject(this)
         .on('start',function (d) {
             if (d.x1){
-                // d.x1 =  d3.event.x - d.xt;
+                d.x1 =  d3.event.x - d.xt;
                 d.y1 =  d3.event.y - d.yt;
             }else{
-                // d.x1 = d3.event.x;
+                d.x1 = d3.event.x;
                 d.y1 = d3.event.y;
             }
         })
         .on('drag',function(d){
             d3.select(this)
-            .attr("transform", "translate(0," + (d3.event.y - d.y1) + ")");
+            .attr("transform", "translate(" + (d3.event.x - d.x1) + "," + (d3.event.y - d.y1) + ")");
 
-            // d.xt = d3.event.x - d.x1;
+            d.xt = d3.event.x - d.x1;
             d.yt = d3.event.y - d.y1;
         });
 
@@ -170,7 +170,6 @@ function resize_borders(groups) {
     borders.attr('width', function () {
         var parent = d3.select(this.parentNode);
         // var siblings = parent.not(this)
-        console.log(d3.select(parent.selectAll(':not(.border_rect)')));
         // var childs = parent.selectAll(':not(.border_rect)');
         // console.log(parent.filter(function(d){return d.classed()}));
         // console.log(d3.max(parent, function(d){return d.getBBox().width}));
@@ -179,7 +178,6 @@ function resize_borders(groups) {
     var width = childs.node().getBBox().width;
 
 
-    console.log(width);
     //
 }
 
@@ -195,7 +193,6 @@ function reformat_link(this_link){
                 y2 = source.node().getBBox().height/2 * (d.y2-d.y1)/Math.abs(d.y2-d.y1) - 5,
                 x2 = y2 / Math.tan(ang),
                 h2 = Math.sqrt(x2**2 + y2**2);
-            console.log(source.node().getBBox().width);
             if (h1<h2){return d.x1 + x1}else{return d.x1 + x2}
         })
         .attr('y1', function(d){
@@ -249,19 +246,97 @@ function reformat_link(this_link){
         });
 }
 
-function render_features(features){
-    var nodes = features.nodes,
-        edges = features.edges,
-        svg = d3.select("svg"),
-        width = parseInt(svg.style('width').match(/\d+/)[0]),
-        height = parseInt(svg.style('height').match(/\d+/)[0]);
+function starting_positions(nodes, edges, width, height){
+    // Question node sits at the top
+    nodes[0]['x'] = width/2;
+    nodes[0]['y'] = height/2;
+    nodes[0]['fixed'] = true;
 
-    // assign random starting coordinates to each node
+    // find number of connections on each node
+    var node_ids = nodes.map(function(node){return node.id});
+    for (e in edges){
+        var s = $.inArray(edges[e].source, node_ids),
+            t = $.inArray(edges[e].source, node_ids);
+
+        if (!nodes[s].hasOwnProperty('numlinks')){nodes[s]['numlinks'] = 0; nodes[s]['assigned']=0; nodes[s]['ang']=0}
+        if (!nodes[t].hasOwnProperty('numlinks')){nodes[t]['numlinks'] = 0; nodes[t]['assigned']=0; nodes[t]['ang']=0}
+
+        nodes[s].numlinks++;
+        nodes[t].numlinks++;
+    }
+
+    // define recursive function to find connectedness
+    function graph_connectedness(node, nodes, edges, node_ids){
+        // define function to sort list of pairs of connected neighbors by "most connected"
+        function connectedness(arr){
+            var res = [],
+                neighbors = [];
+            for (i in arr){ for (j in arr){ if (i<j) {
+                res.push(arr[i].filter(function(x){return $.inArray(x,arr[j]) != -1}).length);
+                neighbors.push([i,j]);
+            }}}
+
+            var sort_indices = new Array(neighbors.length);
+            for (var i = 0; i < neighbors.length; ++i) sort_indices[i] = i;
+            sort_indices.sort(function (a, b) { return res[a] > res[b] ? -1 : res[a] < res[b] ? 1 : 0; });
+
+            return sort_indices.map(function(i){return neighbors[i]});
+        }
+
+        var child_edges = [],
+            child_nodes = [],
+            descendants = [];
+
+        for (e in edges){
+            if (edges[e].target == nodes[node]){
+                child_edges.push(e);
+                child_nodes.push($.inArray(edges[e].source, node_ids))
+            }
+        }
+
+        for (n in child_nodes){descendants.push(graph_connectedness(child_nodes[n], nodes, edges, node_ids))}
+        nodes['child_nodes'] = child_nodes;
+        nodes['child_ordering'] = connectedness(descendants);
+
+        // if this node connects branches, i.e. connects outward to two other nodes, return it's index
+        if (edges.filter(function(e){edges[e].source==nodes[node]}).length > 1){
+            return descendants.reduce(function(x,y){return x.concat(y)}).concat(node)
+        }else {
+            return descendants.reduce(function (x, y) { return x.concat(y) })
+        }
+    }
+
+
+
+    // find nodes connected to head
+    var completed = [49];
+
+    var nodes_of_interest = [];
+    for (var e=0; e<edges.length; e++) {
+        if (edges[e].target == nodes[0].id && $.inArray(edges[e].source, completed) == -1) {
+            nodes_of_interest.push(edges[e].source)
+        }
+    }
+
+    graph_connectedness(0,nodes,edges,node_ids);
+
+    // for (n in nodes_of_interest){
+    //     node
+    //     completed.push(nodes_of_interest[n])
+    // }
+
+    console.log([1,2].filter(function(x){return $.inArray(x,[1,2,3]) != -1}));
+    console.log(nodes_of_interest);
+
+
+
+
+    // random positions
     for (var n=0; n<nodes.length; n++){
         if (n==0){
-            nodes[n]['x'] = width / 2;
-            nodes[n]['y'] = height / 2;
-            nodes[n]['fixed'] = true;
+            // nodes[n]['x'] = width / 2;
+            // nodes[n]['y'] = height / 2;
+            // nodes[n]['fixed'] = true;
         }else {
             nodes[n]['x'] = width * Math.random();
             nodes[n]['y'] = height * Math.random();
@@ -273,6 +348,19 @@ function render_features(features){
         nodes[n]['xt'] = 0;
         nodes[n]['yt'] = 0;
     }
+
+    return [nodes, edges]
+}
+
+function render_features(features){
+    var nodes = features.nodes,
+        edges = features.edges,
+        svg = d3.select("svg"),
+        max_width = 150,
+        width = parseInt(svg.style('width').match(/\d+/)[0]),
+        height = parseInt(svg.style('height').match(/\d+/)[0]);
+
+    [nodes, edges] = starting_positions(nodes, edges, width, height);
 
     // assign numlinks, etc. to each node
     for (var l=0; l < features.edges.length; l++){
@@ -290,7 +378,6 @@ function render_features(features){
                 edges[l].target_id = nodes[n].id}
         }
     }
-    console.log();
 
     // Make container to contain all objects
     var main = svg.selectAll('.main')
@@ -336,7 +423,6 @@ function render_features(features){
         .attr('source', function(d){ return d.source_id})
         .attr('target', function(d){ return d.target_id})
         .each(function(d){
-            console.log(d.target_id);
             var source = d3.select('[id=node_' + d.source_id + ']'),
                 target = d3.select('[id=node_' + d.target_id + ']');
 
@@ -344,9 +430,6 @@ function render_features(features){
             d.y1 = source.data()[0].y;
             d.x2 = target.data()[0].x + target.node().getBBox().width/2 - 5;
             d.y2 = target.data()[0].y;
-
-            console.log(d);
-            console.log(d);
 
 
             d3.select(this).append('line')
@@ -382,6 +465,6 @@ function render_features(features){
     .attr("d", "M0,-5L10,0L0,5");
 
     // Animate nodes
-    equilibrate_nodes(groups, links, 1500);
+    // equilibrate_nodes(groups, links, 1500);
     groups.call(drag_with_links(groups,links));
 }
