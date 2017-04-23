@@ -14,11 +14,14 @@
         <script type="text/javascript" src="{{ url_for('static',filename='scripts/socket.io.min.js') }}"></script>
         <script type="text/javascript" src="{{ url_for('static',filename='scripts/d3.min.js') }}"></script>
     {% endblock %}
+
+
   </head>
 
 
   <body>
         <div class="navbar">
+            <form id="tfnewsearch" method='get' action='http://www.google.com'>
             <a href="/"><img src="{{ url_for('static',filename='images/tobbl.png') }}" height="40" ></a>
             {% if current_user.is_authenticated %}
                 <button class="icon" onclick="location.href = '/logout';">Logout</button>
@@ -26,10 +29,8 @@
                 <button class="icon" onclick="location.href = '/login'">Login</button>
             {% endif %}
             <!-- HTML for SEARCH BAR -->
-            <form id="tfnewsearch" method='get' action='http://www.google.com'>
-                <input type='text' id="tfq2b" class='tftextinput2' name="q" size="21"
-                       maxlength="120" value="Search our website">
-                <input type="submit" value=">" class="tfbutton2">
+            <input type='text' id="tfq2b" class='tftextinput2' name="q" size="21" maxlength="120" value="">
+            <input type="submit" value="Search" class="tfbutton2">
             </form>
 
 

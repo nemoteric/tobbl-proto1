@@ -9,7 +9,7 @@ def home():
     return render_template('main/home.html')
 
 
-# @main.route('/test')
-# def test():
-#     return render_template('test.html')
+@main.route('/results')
+def test():
+    return render_template('main/results.html')
 
