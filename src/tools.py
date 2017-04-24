@@ -1,5 +1,6 @@
 from src import db, session, lm
 from operator import itemgetter
+from functools import reduce
 
 # neo4j
 def get_uid(type):
@@ -12,7 +13,9 @@ def get_uid(type):
 def get_nodes(query, params=None, sortby=None, reverse=False, format=None,
               labels=False, relationships=False, clicks=True):
     query_results = list(session.run(query, params))
-    results = [item[0].properties for item in query_results]
+    results = [[item[i].properties for i in range(len(item))] for item in query_results]
+    if all(map(lambda x: len(x)==1,  results)):
+        results = reduce(lambda x, y: x + y, results)
     if labels:
         for i in range(len(results)):
             results[i]['label'] = [e for e in query_results[i][0].labels][0].lower()

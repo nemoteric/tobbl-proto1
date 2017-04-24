@@ -23,6 +23,14 @@ def view_thread(thread_id):
         flash('Thread does not exist')
         return render_template('main/home.html')
 
+<<<<<<< HEAD
+@threads.route('/test', methods=['GET','POST'])
+@login_required
+def test():
+    return render_template('test.html')
+
+=======
+>>>>>>> master
 
 
 @threads.route('/delete/<thread_id>')

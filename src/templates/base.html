@@ -23,6 +23,7 @@
         <div class="navbar">
             <form id="tfnewsearch" method='get' action='http://www.google.com'>
             <a href="/"><img src="{{ url_for('static',filename='images/tobbl.png') }}" height="40" ></a>
+
             {% if current_user.is_authenticated %}
                 <button class="icon" onclick="location.href = '/logout';">Logout</button>
             {% else %}

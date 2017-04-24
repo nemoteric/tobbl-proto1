@@ -40,7 +40,6 @@
     font-size: 13;
     color: white;
     background-color: transparent;
-
 }
 
 .navbar .tftextinput2 {
@@ -94,7 +93,11 @@ div#content{
 . { padding-left: 10px; padding-right: 10px}
 
 body {
+<<<<<<< HEAD
+    /*background-color: #1E8449  ;*/
+=======
     background-color: #1E8449  ;
+>>>>>>> master
 
 }
 

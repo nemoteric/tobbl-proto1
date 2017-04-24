@@ -13,11 +13,14 @@
     margin: 4px auto;
 }
 
-.post .score_box {
+.score_box {
     float: left;
     width: 43px;
     height: 45px;
+    text-align: center;
+    margin-right: 8px;
 }
+
 
 .post_body {
 }
@@ -25,14 +28,18 @@
 .post_time {
     /*float: right;*/
     width: 400px;
-
 }
 
 .post #author {
     /*float: right;*/
 }
 
-.post_footer {
+.post_footer .left {
+    float: left;
+}
+
+.post_footer .right {
+    /*float: right;*/
     text-align: right;
 }
 

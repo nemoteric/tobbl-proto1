@@ -19,25 +19,7 @@ function document_ready(){
 
     socket.on('new_post', function(post){
         insert_post(post)
-    });
-
-    // socket.on('render_thread', function(json){
-    //     var thread = json['thread'];
-    //     $(`div#thread_${thread.id} > .thread_data .thread_title`).text(thread.body);
-    //     var elements = json['elements'];
-    //     for (var key in elements){
-    //         if (elements.hasOwnProperty(key)){
-    //             var el = elements[key];
-    //             el['time'] = new Date(1000*el['timestamp']).toUTCString();
-    //             if (el['label'] == 'comment'){
-    //                 insert_comment(el, 'thread', thread.id)d
-    //             }if (el['label'] == 'prompt'){
-    //                 insert_prompt(el, 'thread', thread.id);
-    //             }
-    //         }
-    //     }
-    //     socket.emit('update_scores', 'Thread', json['thread_id'])
-    // });
+    })
 
     socket.emit('render_thread', thread_id());
     console.log('here')
@@ -45,12 +27,6 @@ function document_ready(){
 
 
 function render_thread(json){
-    // This
-    // delete all content
-    // var content = document.getElementById("content");
-    // while (content.firstChild) {
-    //     content.removeChild(content.firstChild)}
-
     for (var post in json['posts']){
         insert_post(json['posts'][post])
     }
@@ -71,22 +47,70 @@ function insert_post(post){
         return elems[all] || all;
     });
 
-    console.log(post_time);
-    $(  `<div class="post" id="${post['id']}">` +
-        `   <div class="score_box">` +
-        `      <button onclick="upvote(${post['id']})">+</button><br>` +
-        `      <t id="score" class="post_score">${post['score']}</t>` +
-        `   </div>` +
-        `   <div class="post_body">` +
-        `      <a class="post_id">${post['id']}:</a>` +
-        `      <t class="post_body">${post['body']}</t>` +
-        `   </div>` +
-        `   <div class="post_footer">`+
-        `      <a href="/user/${post['author']}" id="author">${post['author']}:</a>` +
-        `      <t class="post_time">${time}</t>` +
-        `   </div>` +
-        `</div>`
-    ).appendTo(post_div);
+    if (post['type']=='Post') {
+        $(`<div class="post" id="${post['id']}">` +
+            `   <div class="score_box">` +
+            `      <button onclick="upvote(${post['id']})">+</button><br>` +
+            `      <t id="score" class="post_score">${post['score']}</t>` +
+            `   </div>` +
+            `   <div class="post_body">` +
+            `      <a class="post_id">${post['id']}:</a>` +
+            `      <t class="post_body">${post['body']}</t>` +
+            `   </div>` +
+            `   <div class="post_footer">` +
+            `      <div class="left">` +
+            `          <a onclick="reply(${post['id']}, 0)">Reply</a>` +
+            `          <a onclick="reply(${post['id']}, 2)">Support</a> ` +
+            `          <a onclick="reply(${post['id']}, 3)">Object</a> ` +
+            `      </div>` +
+            `      <div class="right">` +
+            `         <a id="author">${post['author']}:</a>` +
+            `         <t class="post_time">${time}</t>` +
+            `      </div>` +
+            `   </div>` +
+            `</div>`
+        ).appendTo(post_div);
+    }
+    if (post['type']=='Issue'){
+        $(  `<div class="post issue" id="${post['id']}">` +
+            `   <div class="score_box">` +
+            `      <button onclick="upvote(${post['id']})">+</button><br>` +
+            `      <t id="score" class="post_score">${post['score']}</t>` +
+            `   </div>` +
+            `   <div class="post_body">` +
+            `      <a class="post_id">${post['id']}:</a>` +
+            `      <t class="post_body">${post['body']}</t>` +
+            `   </div>` +
+            `   <div class="post_footer">`+
+            `      <div class="left">` +
+            `          <a onclick="reply(${post['id']}, 0)">Reply</a>` +
+            `          <a onclick="reply(${post['id']}, 1)">Resolve</a> ` +
+            `      </div>` +
+            `      <div class="right">` +
+            `         <a id="author">${post['author']}:</a>` +
+            `         <t class="post_time">${time}</t>` +
+            `      </div>` +
+            `   </div>` +
+            `</div>`
+        ).appendTo(post_div);
+    }
+}
+
+function reply(post_id, mode){
+    var textbox = $(`div#reply_box > textarea`);
+    if (mode==0){
+        textbox.val(textbox.val() + `@${post_id} `)
+    }
+    if (mode==1){
+        textbox.val(textbox.val() + `~@${post_id} `)
+    }
+    if (mode==2){
+        textbox.val(textbox.val() + `^@${post_id} `)
+    }
+    if (mode==3){
+        textbox.val(textbox.val() + `!@${post_id} `)
+    }
+    textbox.focus();
 }
 
 function submit_post(){
