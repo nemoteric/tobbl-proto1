@@ -7,6 +7,6 @@ find . -name '__pycache__' | xargs -n 1 git rm -rf
 git add *
 git rm -rf --cached migrations
 git rm -rf --cached venv
-git rm -rf .idea
+git rm -rf .idea/
 git rm -f --cached dev.db
 git commit -m "$1"
