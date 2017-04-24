@@ -29,5 +29,4 @@ function render_home(json){
         console.log(threads[key]['id']);
         $(`<div><a href="/thread/${threads[key]['id']}">${threads[key]['id']}</a></div>`).appendTo(thread_div);
     }
-
 }
