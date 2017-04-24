@@ -12,6 +12,7 @@ def new_thread():
     thread = get_nodes('MERGE (t:Thread {id: {id}}) RETURN t', {'id': int(thread_id)})
     return redirect('thread/%i' %thread_id)
 
+
 @threads.route('/<thread_id>', methods=['GET','POST'])
 @login_required
 def view_thread(thread_id):
@@ -23,14 +24,11 @@ def view_thread(thread_id):
         flash('Thread does not exist')
         return render_template('main/home.html')
 
-<<<<<<< HEAD
+
 @threads.route('/test', methods=['GET','POST'])
 @login_required
 def test():
     return render_template('test.html')
-
-=======
->>>>>>> master
 
 
 @threads.route('/delete/<thread_id>')
