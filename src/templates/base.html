@@ -21,17 +21,16 @@
 
   <body>
         <div class="navbar">
-            <form id="tfnewsearch" method='get' action='http://www.google.com'>
             <a href="/"><img src="{{ url_for('static',filename='images/tobbl.png') }}" height="40" ></a>
+            <form id="tfnewsearch" method='get' action='http://www.google.com'>
+                <input type='text' id="tfq2b" class='tftextinput2' name="q" size="21" maxlength="120" value="">
+                <input type="submit" value="Search" class="tfbutton2">
+            </form>
             {% if current_user.is_authenticated %}
                 <button class="icon" onclick="location.href = '/logout';">Logout</button>
             {% else %}
                 <button class="icon" onclick="location.href = '/login'">Login</button>
             {% endif %}
-            <!-- HTML for SEARCH BAR -->
-            <input type='text' id="tfq2b" class='tftextinput2' name="q" size="21" maxlength="120" value="">
-            <input type="submit" value="Search" class="tfbutton2">
-            </form>
 
 
         </div>
