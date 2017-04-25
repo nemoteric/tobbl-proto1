@@ -1,0 +1,25 @@
+{% extends '/base.html' %}
+
+{% block head %}
+    {{ super() }}
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='styles/home.css') }}">
+    <script type="text/javascript" src="{{ url_for('static',filename='scripts/home.js') }}"></script>
+    <script type="text/javascript" charset="utf-8">
+        $(document).ready(function(){
+            document_ready()
+        })
+    </script>
+{% endblock %}
+
+{% block content %}
+    <body style='background-color:#FFFFFF'>
+        <br>
+        Sort by  :
+        <select>
+            <option value="relevance">Relevance</option>
+            <option value="relevance">Recentness</option>
+            <option value="relevance">Controversy</option>
+        </select>
+    </body>
+
+{% endblock %}

@@ -14,8 +14,6 @@ def search(search_item):
     return render_template('main/search.html')
 
 
-## Note: redirecting to 'test.html' will produce an error if it doesn't exist.
-
-# @main.route('/test')
-# def test():
-#     return render_template('test.html')
+@main.route('/results')
+def test():
+    return render_template('main/results.html')

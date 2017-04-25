@@ -19,6 +19,15 @@
     height: 34px;
     /*margin-top: 4px;*/
 }
+
+
+.navbar img{
+    height: 34px;
+    /*margin-top: 4px;*/
+}
+
+
+
 .navbar .icon {
     float: right;
     /*background-color: #C9C19F;*/
@@ -32,6 +41,39 @@
     color: white;
     background-color: transparent;
 }
+
+.navbar .tftextinput2 {
+    float: right;
+    /*background-color: #C9C19F;*/
+    /*font-size: 16px;*/
+    margin-top: 1px;
+    margin-right: 57px;
+    /*padding: 4px 10px;*/
+    border: inherit 1px;
+    font-family: Inconsolata;
+    font-size: 13;
+    color: white;
+    background-color: transparent;
+
+}
+
+.navbar .tfbutton2 {
+    float: right;
+    /*background-color: #C9C19F;*/
+    /*font-size: 16px;*/
+    margin-top: 1px;
+    margin-right: 17px;
+    /*padding: 4px 10px;*/
+    border: inherit 1px;
+    font-family: Inconsolata;
+    font-size: 13;
+    color: black;
+    background-color: white;
+
+}
+
+
+
 
 div#content{
     position: fixed;
