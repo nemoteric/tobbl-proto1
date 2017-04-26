@@ -61,34 +61,47 @@ def new_post(json): # Should be able to do this in one query, but doing it for e
     supporting = [int(ref[2:]) for ref in refs if re.match('\^', ref)]
     objecting = [int(ref[2:]) for ref in refs if re.match('!', ref)]
     answering = [int(ref[2:]) for ref in refs if re.match('~', ref)]
-    replying = [int(ref[1:]) for ref in refs if re.match('@', ref)]
+    replying = []#[int(ref[1:]) for ref in refs if re.match('@', ref)]
+
+    json['body'] = re.sub('([~\^!]*@[0-9]+)', '', json['body']).strip()
 
     if re.match('(\?)', json['body']):
         if len(supporting) | len(objecting):
             flash("Can't support or object and also ask a question")
             return
-        post = get_nodes("MATCH (t:Thread {id: {thread_id}}), (u:User {username: {username}}) " +
-                         "CREATE (t)-[:CONTAINS]->(Q:Question { props })<-[:AUTHOR]-(u) " +
-                         "SET Q.score = 0 " +
-                         "RETURN Q", {'thread_id': int(json['thread_id']),
-                                      'username': current_user.username,
-                                      'props': {'body': json['body'][1:].strip(),
-                                                'id': get_uid('Question'),
-                                                'author': current_user.username,
-                                                'time': time()}
-                                      })[0]
+        if 'thread_id' in json.keys():
+            post = get_nodes("MATCH (t:Thread {id: {thread_id}}), (u:User {username: {username}}) " +
+                             "CREATE (t)-[:CONTAINS]->(Q:Question { props })<-[:AUTHOR]-(u) " +
+                             "SET Q.score = 0 " +
+                             "RETURN Q", {'thread_id': int(json['thread_id']),
+                                          'username': current_user.username,
+                                          'props': {'body': json['body'][re.match('(\?)+', '?? eyy').span()[1]:].strip(),
+                                                    'id': get_uid('Question'),
+                                                    'author': current_user.username,
+                                                    'time': time()}
+                                          })[0]
+        else:
+            post = get_nodes("(u:User {username: {username}}) " +
+                             "CREATE (Q:Question { props })<-[:AUTHOR]-(u) " +
+                             "SET Q.score = 0 " +
+                             "RETURN Q", {'username': current_user.username,
+                                          'props': {
+                                              'body': json['body'][re.match('(\?)+', '?? eyy').span()[1]:].strip(),
+                                              'id': get_uid('Question'),
+                                              'author': current_user.username,
+                                              'time': time()}
+                                          })[0]
+
     elif len(answering) & (len(supporting) | len(objecting)):
         flash("Can't support or object and also answer")
         return
     elif len(answering) == 1:
-        post = get_nodes("MATCH (t:Thread {id: {thread_id}}), (u:User {username: {username}}), (Q:Question) " +
-                         "WHERE Q.id = {answering} " +
-                         "CREATE (t)-[:CONTAINS]->(A:Post { props })<-[:AUTHOR]-(u), (Q)<-[:ANSWER]-(A) " +
+        post = get_nodes("MATCH (u:User {username: {username}}), (Q:Question {id: {answering}}) " +
+                         "CREATE (A:Post { props })<-[:AUTHOR]-(u), (Q)<-[:ANSWER]-(A) " +
                          "SET A.score = 0 " +
-                         "RETURN A", {'thread_id': int(json['thread_id']),
-                                       'answering': answering,
-                                       'username': current_user.username,
-                                       'props': {'body': json['body'],
+                         "RETURN A", {'answering': answering,
+                                      'username': current_user.username,
+                                      'props': {'body': json['body'],
                                                 'id': get_uid('Post'),
                                                 'author': current_user.username,
                                                 'answering': True,
@@ -96,12 +109,11 @@ def new_post(json): # Should be able to do this in one query, but doing it for e
                                       })[0]
         print(post)
     elif len(supporting) & len(objecting) & len(replying):
-        post = get_nodes("MATCH (t:Thread {id: {thread_id}}), (u:User {username: {username}}), (sp:Post), (op:Post), (rp:Post) " +
+        post = get_nodes("MATCH (u:User {username: {username}}), (sp:Post), (op:Post), (rp:Post) " +
                          "WHERE sp.id IN {supporting} AND op.id IN {objecting} AND rp.id IN {replying} " +
-                         "CREATE (t)-[:CONTAINS]->(p:Post { props })<-[:AUTHOR]-(u), (sp)<-[:SUPPORT]-(p), (op)<-[:OBJECT]-(p), (rp)<-[:REPLY]-(p) " +
+                         "CREATE (p:Post { props })<-[:AUTHOR]-(u), (sp)<-[:SUPPORT]-(p), (op)<-[:OBJECT]-(p), (rp)<-[:REPLY]-(p) " +
                          "SET p.score = 0 " + \
-                         "RETURN p", {'thread_id': int(json['thread_id']),
-                                       'supporting': supporting,
+                         "RETURN p",  {'supporting': supporting,
                                        'objecting': objecting,
                                        'replying': replying,
                                        'username': current_user.username,
@@ -112,12 +124,11 @@ def new_post(json): # Should be able to do this in one query, but doing it for e
                                                 'time': time()}
                                       })[0]
     elif len(supporting) & len(objecting):
-        post = get_nodes("MATCH (t:Thread {id: {thread_id}}), (u:User {username: {username}}), (sp:Post), (op:Post) " +
+        post = get_nodes("MATCH (u:User {username: {username}}), (sp:Post), (op:Post) " +
                          "WHERE sp.id IN {supporting} AND op.id IN {objecting} " +
-                         "CREATE (t)-[:CONTAINS]->(p:Post { props })<-[:AUTHOR]-(u), (sp)<-[:SUPPORT]-(p), (op)<-[:OBJECT]-(p) " +
+                         "CREATE (p:Post { props })<-[:AUTHOR]-(u), (sp)<-[:SUPPORT]-(p), (op)<-[:OBJECT]-(p) " +
                          "SET p.score = 0 " +
-                         "RETURN p", {'thread_id': int(json['thread_id']),
-                                       'supporting': supporting,
+                         "RETURN p",  {'supporting': supporting,
                                        'objecting': objecting,
                                        'username': current_user.username,
                                        'props': {'body': json['body'],
@@ -127,12 +138,11 @@ def new_post(json): # Should be able to do this in one query, but doing it for e
                                                 'time': time()}
                                       })[0]
     elif len(supporting) & len(replying):
-        post = get_nodes("MATCH (t:Thread {id: {thread_id}}), (u:User {username: {username}}), (sp:Post), (rp:Post) " +
+        post = get_nodes("MATCH (u:User {username: {username}}), (sp:Post), (rp:Post) " +
                          "WHERE sp.id IN {supporting} AND rp.id IN {replying} " +
-                         "CREATE (t)-[:CONTAINS]->(p:Post { props })<-[:AUTHOR]-(u), (sp)<-[:SUPPORT]-(p), (rp)<-[:REPLY]-(p) " +
+                         "CREATE (p:Post { props })<-[:AUTHOR]-(u), (sp)<-[:SUPPORT]-(p), (rp)<-[:REPLY]-(p) " +
                          "SET p.score = 0 " +
-                         "RETURN p", {'thread_id': int(json['thread_id']),
-                                       'supporting': supporting,
+                         "RETURN p",  {'supporting': supporting,
                                        'replying': replying,
                                        'username': current_user.username,
                                        'props': {'body': json['body'],
@@ -142,12 +152,11 @@ def new_post(json): # Should be able to do this in one query, but doing it for e
                                                 'time': time()}
                                       })[0]
     elif len(objecting) & len(replying):
-        post = get_nodes("MATCH (t:Thread {id: {thread_id}}), (u:User {username: {username}}), (op:Post), (rp:Post) " +
+        post = get_nodes("MATCH (u:User {username: {username}}), (op:Post), (rp:Post) " +
                          "WHERE op.id IN {objecting} AND rp.id IN {replying} " +
-                         "CREATE (t)-[:CONTAINS]->(p:Post { props })<-[:AUTHOR]-(u), (op)<-[:OBJECT]-(p), (rp)<-[:REPLY]-(p) " +
+                         "CREATE (p:Post { props })<-[:AUTHOR]-(u), (op)<-[:OBJECT]-(p), (rp)<-[:REPLY]-(p) " +
                          "SET p.score = 0 " +
-                         "RETURN p", {'thread_id': int(json['thread_id']),
-                                       'replying': replying,
+                         "RETURN p", { 'replying': replying,
                                        'objecting': objecting,
                                        'username': current_user.username,
                                        'props': {'body': json['body'],
@@ -157,12 +166,11 @@ def new_post(json): # Should be able to do this in one query, but doing it for e
                                                 'time': time()}
                                       })[0]
     elif supporting:
-        post = get_nodes("MATCH (t:Thread {id: {thread_id}}), (u:User {username: {username}}), (sp:Post) " +
+        post = get_nodes("MATCH (u:User {username: {username}}), (sp:Post) " +
                          "WHERE sp.id IN {supporting} " +
-                         "CREATE (t)-[:CONTAINS]->(p:Post { props })<-[:AUTHOR]-(u), (sp)<-[:SUPPORT]-(p) " +
+                         "CREATE (p:Post { props })<-[:AUTHOR]-(u), (sp)<-[:SUPPORT]-(p) " +
                          "SET p.score = 0 " +
-                         "RETURN p", {'thread_id': int(json['thread_id']),
-                                       'supporting': supporting,
+                         "RETURN p", { 'supporting': supporting,
                                        'username': current_user.username,
                                        'props': {'body': json['body'],
                                                 'id': get_uid('Post'),
@@ -171,12 +179,11 @@ def new_post(json): # Should be able to do this in one query, but doing it for e
                                                 'time': time()}
                                       })[0]
     elif objecting:
-        post = get_nodes("MATCH (t:Thread {id: {thread_id}}), (u:User {username: {username}}), (op:Post) " +
+        post = get_nodes("MATCH (u:User {username: {username}}), (op:Post) " +
                          "WHERE op.id IN {objecting} " +
-                         "CREATE (t)-[:CONTAINS]->(p:Post { props })<-[:AUTHOR]-(u), (op)<-[:OBJECT]-(p) " +
+                         "CREATE (p:Post { props })<-[:AUTHOR]-(u), (op)<-[:OBJECT]-(p) " +
                          "SET p.score = 0 " +
-                         "RETURN p", {'thread_id': int(json['thread_id']),
-                                       'objecting': objecting,
+                         "RETURN p",  {'objecting': objecting,
                                        'username': current_user.username,
                                        'props': {'body': json['body'],
                                                 'id': get_uid('Post'),
@@ -186,12 +193,11 @@ def new_post(json): # Should be able to do this in one query, but doing it for e
                                       })[0]
     elif replying:
         ## new post with all replying relationships
-        post = get_nodes("MATCH (t:Thread {id: {thread_id}}), (u:User {username: {username}}), (rp:Post) " +
+        post = get_nodes("MATCH (u:User {username: {username}}), (rp:Post) " +
                          "WHERE rp.id IN {replying} " +
-                         "CREATE (t)-[:CONTAINS]->(p:Post { props })<-[:AUTHOR]-(u), (rp)<-[:REPLY]-(p) " +
+                         "CREATE (p:Post { props })<-[:AUTHOR]-(u), (rp)<-[:REPLY]-(p) " +
                          "SET p.score = 0 " +
-                         "RETURN p", {'thread_id': int(json['thread_id']),
-                                      'replying': replying,
+                         "RETURN p", {'replying': replying,
                                       'username': current_user.username,
                                       'props': {'body': json['body'],
                                                 'id': get_uid('Post'),
@@ -200,11 +206,10 @@ def new_post(json): # Should be able to do this in one query, but doing it for e
                                                 'time': time()}
                                       })[0]
     else:
-        post = get_nodes("MATCH (t:Thread {id: {thread_id}}), (u:User {username: {username}}) " +
-                         "CREATE (t)-[:CONTAINS]->(p:Post { props })<-[:AUTHOR]-(u) " +
+        post = get_nodes("MATCH (u:User {username: {username}}) " +
+                         "CREATE (p:Post { props })<-[:AUTHOR]-(u) " +
                          "SET p.score = 0 " +
-                         "RETURN p", {'thread_id': int(json['thread_id']),
-                                      'username': current_user.username,
+                         "RETURN p", {'username': current_user.username,
                                       'props': {'body': json['body'],
                                                 'id': get_uid('Post'),
                                                 'author': current_user.username,

@@ -1,0 +1,32 @@
+.node_content{
+    width: 250px
+}
+
+.author{
+    float: left;
+}
+
+.post_text{
+    /*fill: 100%;*/
+    /*float: right;*/
+    text-align: right;
+}
+
+.post_footer{
+    padding-bottom: 18px;
+}
+
+.left_footer{
+    float:left;
+}
+
+.right_footer{
+    float: right;
+}
+
+.right_footer a{
+    font-weight: bold;
+    font-size: 14px;
+    cursor: pointer;
+}
+

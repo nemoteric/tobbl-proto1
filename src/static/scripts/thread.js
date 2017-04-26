@@ -19,7 +19,7 @@ function document_ready(){
 
     socket.on('new_post', function(post){
         insert_post(post)
-    })
+    });
 
     socket.emit('render_thread', thread_id());
     console.log('here')
@@ -37,7 +37,7 @@ function insert_post(post){
     var post_time = new Date(0);
     post_time.setUTCSeconds(post['time']);
     var current_time = new Date();
-    // console.log(current_time.);
+    // console.log(current_time);
 
     var time = "%H%:%M% %m%/%d%/%y%";
     var elems = {'%H%': post_time.getHours(), '%M%': post_time.getMinutes(),// '%s%': post_time.getSeconds(),

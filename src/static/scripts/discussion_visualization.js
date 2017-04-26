@@ -2,7 +2,9 @@
  * Created by samuel on 4/12/17.
  */
 
-// Universal functions
+// declarations
+var max_width = 300
+
 function open_socket() {
     var namespace = '/_thread';
     var socket = io.connect('http://' + document.domain + ':' + location.port + namespace);
@@ -19,11 +21,11 @@ function document_ready(){
         socket.emit(window.location.href);
         console.log(window.location.href)
     });
+    socket.on('new_post', function(json){ new_post(json)});
 
     socket.emit('render_question', {'question_id': 2});
 }
 
-// Bahaviors
 var drag_this = d3.drag().subject(this)
         .on('start',function (d) {
             if (d.x1){
@@ -34,7 +36,7 @@ var drag_this = d3.drag().subject(this)
                 d.y1 = d3.event.y;
             }
         })
-        .on('drag',function(d){
+        .on('drag',function (d) {
             d3.select(this)
             .attr("transform", "translate(" + (d3.event.x - d.x1) + "," + (d3.event.y - d.y1) + ")");
 
@@ -55,6 +57,137 @@ var drag_LR = d3.drag().subject(this)
             .attr("transform", "translate(" + (d3.event.x - d.x1) + ",0)");
             d.xt = d3.event.x - d.x1;
         });
+
+function post_html(post){
+    var post_time = new Date(0);
+    post_time.setUTCSeconds(post['time']);
+    var current_time = new Date();
+    // console.log(current_time);
+
+    var time = "%H%:%M% %m%/%d%/%y%";
+    var elems = {'%H%': post_time.getHours(), '%M%': post_time.getMinutes(),// '%s%': post_time.getSeconds(),
+                 '%m%': post_time.getMonth(), '%d%': post_time.getDate(), '%y%': post_time.getYear()};
+
+    time = time.replace(/%\w+%/g, function(all) {
+        return elems[all] || all;
+    });
+    if (post['type'] == 'Question'){
+        return `<div class="question_post post" id="${post['id']}">` +
+            `   <div class="body_div">` +
+            `      <div class="author">${post['author']}:</div>` +
+            `      <div class="post_text">${post['body']}</div>` +
+            `   </div>` +
+            `   <div class="post_footer">`+
+            `      <div class="left_footer">` +
+            `         <button onclick="upvote(${post['id']})">+</button>` +
+            `         <t id="score" class="post_score">${post['score']}</t>` +
+            `      </div>` +
+            `      <div class="right_footer">` +
+            `         <a onclick="reply(${post['id']}, 0)">Answer</a>` +
+            `      </div>` +
+            `   </div>` +
+            `</div>`
+    }else{
+        return `<div class="post" id="${post['id']}">` +
+            `   <div class="body_div">` +
+            `      <div class="author">${post['author']}:</div>` +
+            `      <div class="post_text">${post['body']}</div>` +
+            `   </div>` +
+            `   <div class="post_footer">`+
+            `      <div class="left_footer">` +
+            `         <button onclick="upvote(${post['id']})">+</button>` +
+            `         <t id="score" class="post_score">${post['score']}</t>` +
+            `      </div>` +
+            `      <div class="right_footer">` +
+            `         <a onclick="reply(${post['id']}, 1)">Support</a>` +
+            `         <a onclick="reply(${post['id']}, 2)">Challenge</a>` +
+            `      </div>` +
+            `   </div>` +
+            `</div>`
+    }
+}
+
+function submit_post(){
+    var textbox = $(`div#reply_box > textarea`);
+    // open_socket().emit('new_post', {
+    //     'body':textbox.val(),
+    //     // 'question_id': thread_id() // vulnerability
+    // });
+    textbox.val('');
+
+    new_post({'node': {'body': 'Hey there', 'id': 101, 'answering': false},
+        'edges': [{'source': 101, 'target': 48, 'type': 'OBJECT'}, {'source': 101, 'target': 42, 'type': 'SUPPORT'}]})
+}
+
+function reply(post_id, mode){
+    var textbox = $(`div#reply_box > textarea`);
+
+    if (mode==0){
+        textbox.val(textbox.val() + `~@${post_id} `)
+    }
+    if (mode==1){
+        textbox.val(textbox.val() + `^@${post_id} `)
+    }
+    if (mode==2){
+        textbox.val(textbox.val() + `!@${post_id} `)
+    }
+    textbox.focus();
+}
+
+function new_post(json){
+    // NOTE: This function is suboptimal
+    var post = json['node'],
+        edges = json['edges'],
+        done = false;
+
+    if (post.hasOwnProperty('answering')){
+        if (post['answering']){
+            // find right-most answer
+            var answers = d3.select('.post_panel').selectAll('.answer_node'),
+                num = 0,
+                y = 0;
+
+            answers.each(function(d){
+                y = d.y;
+                num += 1
+            })
+
+            post['x'] = num*max_width + max_width/2;
+            post['y'] = y;
+
+            var node = make_nodes(d3.select('.post_panel'), [post], true, 'answer_node', false);
+            done = true;
+    }}
+
+    if (!done){
+        var targets = d3.select('.post_panel').selectAll('g'),
+            target_ids = []
+            ys = [],
+            xsum = 0;
+
+        for (e in edges){ target_ids.push(edges[e]['target']) }
+
+        targets.each(function(d){
+            if ($.inArray(d.id, target_ids) != -1){
+                ys.push(parseInt(d.y));
+                xsum += d.x;
+            }
+        })
+
+        post['x'] = xsum/ys.length;
+        post['y'] = Math.max.apply(Math, ys);
+
+
+        var node = make_nodes(d3.select('.post_panel'), [post], false, 'post_node', false);
+
+    }
+
+    make_links(edges)
+
+
+    d3.select('.post_panel').call(drag_with_links(d3.select('.post_panel').selectAll('g'), d3.selectAll('.link'), true));
+    equilibrate_nodes(d3.select('.post_panel').selectAll('g'), d3.selectAll('.link'), 2000)
+}
 
 function drag_with_links(groups, links, LR) {
     return d3.drag().subject(this)
@@ -124,21 +257,21 @@ function equilibrate_nodes(groups, links, time){
             d.force = [0,0]
         });
 
-        // find edge-to-edge distance
+        // find edge-to-edge forces
         groups.each(function(d){
-            var px = d3.select(this).node().getBBox().x + d.xt,
-                py = d3.select(this).node().getBBox().y + d.yt,
-                p_height = d3.select(this).node().getBBox().height,
-                p_width = d3.select(this).node().getBBox().width,
+            var p_height = d3.select(this).data()[0].height,
+                p_width = d3.select(this).data()[0].width,
+                px = d3.select(this).data()[0].x + d.xt,
+                py = d3.select(this).data()[0].y + d.yt,
                 p_id = d.id;
 
 
             groups.each(function(d){
                 if (d.id != p_id && !d3.select(this).classed('fixed')){
-                    var cx = d3.select(this).node().getBBox().x + d.xt,
-                        cy = d3.select(this).node().getBBox().y + d.yt,
-                        c_height = d3.select(this).node().getBBox().height,
-                        c_width = d3.select(this).node().getBBox().width,
+                    var c_height = d3.select(this).data()[0].height,
+                        c_width = d3.select(this).data()[0].width,
+                        cx = d3.select(this).data()[0].x + d.xt,
+                        cy = d3.select(this).data()[0].y + d.yt,
                         dx = px - cx,
                         dy = py - cy,
                         dist = Math.sqrt(dx**2 + dy**2);
@@ -148,7 +281,54 @@ function equilibrate_nodes(groups, links, time){
                     if (((cx >= px && cx <= px + p_width) || (px >= cx && px <= cx + c_width)) &&
                         ((cy >= py && cy <= py + p_height) || (py >= cy && py <= cy + c_height))){
                         d.force[0] -= 10 * Math.cos(ang);
-                        d.force[0] -= 10 * Math.sin(ang);
+                        d.force[1] -= 10 * Math.sin(ang);
+                    }else{
+                        // calculate distance between two surfaces
+                        var cxm = cx + c_width/2,
+                            cym = cy + c_height/3,
+                            pxm = px + p_width/2,
+                            pym = py + p_height/3;
+
+                        if (cxm-pxm>0){var ang = Math.atan((cym-pym)/(cxm-pxm))}else{var ang = Math.atan((cym-pym)/(cxm-pxm)) - 3.14}
+
+                        //correct hypotenuse for child
+                        var cx1 = c_width/2 * (cxm-pxm)/Math.abs(cxm-pxm + 0.001),
+                            cy1 = cx1 * Math.tan(ang),
+                            ch1 = Math.sqrt(cx1**2 + cy1**2),
+                            cy2 = c_height/2 * (pym-cym)/Math.abs(pym-cym + 0.001),
+                            cx2 = cy2 / Math.tan(ang),
+                            ch2 = Math.sqrt(cx2**2 + cy2**2),
+                            ch = Math.min(ch1, ch2);
+
+                        //correct hypotenuse for parent
+                        var px1 = p_width/2 * (cxm-pxm)/Math.abs(cxm-pxm + 0.001),
+                            py1 = px1 * Math.tan(ang),
+                            ph1 = Math.sqrt(px1**2 + py1**2),
+                            py2 = p_height/2 * (pym-cym)/Math.abs(pym-cym + 0.001),
+                            px2 = py2 / Math.tan(ang),
+                            ph2 = Math.sqrt(px2**2 + py2**2),
+                            ph = Math.min(ph1, ph2);
+
+                        var dist = Math.sqrt((cxm-pxm)**2 + (cym-pym)**2)
+
+                        // if (ch1 < ch2) {
+                        //     if (cx > px){
+                        //         d.force[0] += 1/(cx - px - p_width)^2
+                        //     }else{
+                        //         d.force[0] -= 1/(px - cx - c_width)^2
+                        //     }
+                        // } else {
+                        //     if (cy > py) {
+                        //         d.force[1] += 1/(cy - py - p_height)^2
+                        //     } else {
+                        //         d.force[1] -= 1/(py - cy - c_height)^2
+                        //     }
+                        // }
+
+                        // d.force[0] += Math.max(-5, Math.min(5, (1 / ( (dist-ch-ph) * Math.cos(ang) + 0.001 )**2)))
+                        // d.force[0] += Math.max(-5, Math.max(5, (1 / ( (dist-ch-ph) * Math.sin(ang) + 0.001 )**2)))
+
+                        console.log(d.force)
                     }
                 }
             });
@@ -166,11 +346,11 @@ function equilibrate_nodes(groups, links, time){
 
             // bond forces
             if(!source.classed('fixed')){
-                source.data()[0].force[0] -= Math.max(-1,Math.min(1, (len - 125) * Math.cos(ang)));
-                source.data()[0].force[1] -= Math.max(-1,Math.min(1, (len - 125) * Math.sin(ang)));
+                source.data()[0].force[0] -= Math.max(-1,Math.min(1, (len - 200) * Math.cos(ang)));
+                source.data()[0].force[1] -= Math.max(-1,Math.min(1, (len - 200) * Math.sin(ang)));
             }if(!target.classed('fixed')){
-                target.data()[0].force[0] += Math.max(-1,Math.min(1, (len - 125) * Math.cos(ang)));
-                target.data()[0].force[1] += Math.max(-1,Math.min(1, (len - 125) * Math.sin(ang)));
+                target.data()[0].force[0] += Math.max(-1,Math.min(1, (len - 200) * Math.cos(ang)));
+                target.data()[0].force[1] += Math.max(-1,Math.min(1, (len - 200) * Math.sin(ang)));
             }
         });
 
@@ -234,10 +414,10 @@ function reformat_link(this_link){
         .attr('x1', function(d){
             if (d.x2-d.x1>0){var ang = Math.atan((d.y2-d.y1)/(d.x2-d.x1))}else{var ang = Math.atan((d.y2-d.y1)/(d.x2-d.x1)) - 3.14}
             var source = d3.select('[id=node_' + d.source + ']'),
-                x1 = source.node().getBBox().width/2 * (d.x2-d.x1)/Math.abs(d.x2-d.x1),
+                x1 = source.data()[0].width/2 * (d.x2-d.x1)/Math.abs(d.x2-d.x1),
                 y1 = x1 * Math.tan(ang),
                 h1 = Math.sqrt(x1**2 + y1**2),
-                y2 = source.node().getBBox().height/2 * (d.y2-d.y1)/Math.abs(d.y2-d.y1) - 5,
+                y2 = source.data()[0].height/2 * (d.y2-d.y1)/Math.abs(d.y2-d.y1) - 5,
                 x2 = y2 / Math.tan(ang),
                 h2 = Math.sqrt(x2**2 + y2**2);
             if (h1<h2){return d.x1 + x1}else{return d.x1 + x2}
@@ -245,10 +425,10 @@ function reformat_link(this_link){
         .attr('y1', function(d){
             if (d.x2-d.x1>0){var ang = Math.atan((d.y2-d.y1)/(d.x2-d.x1))}else{var ang = Math.atan((d.y2-d.y1)/(d.x2-d.x1)) - 3.14}
             var source = d3.select('[id=node_' + d.source + ']'),
-                x1 = source.node().getBBox().width/2 * (d.x2-d.x1)/Math.abs(d.x2-d.x1),
+                x1 = source.data()[0].width/2 * (d.x2-d.x1)/Math.abs(d.x2-d.x1),
                 y1 = x1 * Math.tan(ang),
                 h1 = Math.sqrt(x1**2 + y1**2),
-                y2 = source.node().getBBox().height/2 * (d.y2-d.y1)/Math.abs(d.y2-d.y1) - 5,
+                y2 = source.data()[0].height/2 * (d.y2-d.y1)/Math.abs(d.y2-d.y1) - 5,
                 x2 = y2 / Math.tan(ang),
                 h2 = Math.sqrt(x2**2 + y2**2);
             if (h1<h2){return d.y1 + y1}else{return d.y1 + y2}
@@ -256,10 +436,10 @@ function reformat_link(this_link){
         .attr('x2', function(d){
             if (d.x2-d.x1>0){var ang = Math.atan((d.y2-d.y1)/(d.x2-d.x1))}else{var ang = Math.atan((d.y2-d.y1)/(d.x2-d.x1)) - 3.14}
             var target = d3.select('[id=node_' + d.target + ']'),
-                x1 = target.node().getBBox().width/2 * (d.x2-d.x1)/Math.abs(d.x2-d.x1),
+                x1 = target.data()[0].width/2 * (d.x2-d.x1)/Math.abs(d.x2-d.x1),
                 y1 = x1 * Math.tan(ang),
                 h1 = Math.sqrt(x1**2 + y1**2),
-                y2 = target.node().getBBox().height/2 * (d.y2-d.y1)/Math.abs(d.y2-d.y1) + 5,
+                y2 = target.data()[0].height/2 * (d.y2-d.y1)/Math.abs(d.y2-d.y1) + 5,
                 x2 = y2 / Math.tan(ang),
                 h2 = Math.sqrt(x2**2 + y2**2);
             if (h1<h2){return d.x2 - x1}else{return d.x2 - x2}
@@ -267,10 +447,10 @@ function reformat_link(this_link){
         .attr('y2', function(d){
             if (d.x2-d.x1>0){var ang = Math.atan((d.y2-d.y1)/(d.x2-d.x1))}else{var ang = Math.atan((d.y2-d.y1)/(d.x2-d.x1)) - 3.14}
             var target = d3.select('[id=node_' + d.target + ']'),
-                x1 = target.node().getBBox().width/2 * (d.x2-d.x1)/Math.abs(d.x2-d.x1),
+                x1 = target.data()[0].width/2 * (d.x2-d.x1)/Math.abs(d.x2-d.x1),
                 y1 = x1 * Math.tan(ang),
                 h1 = Math.sqrt(x1**2 + y1**2),
-                y2 = target.node().getBBox().height/2 * (d.y2-d.y1)/Math.abs(d.y2-d.y1) + 5,
+                y2 = target.data()[0].height/2 * (d.y2-d.y1)/Math.abs(d.y2-d.y1) + 5,
                 x2 = y2 / Math.tan(ang),
                 h2 = Math.sqrt(x2**2 + y2**2);
             if (h1<h2){return d.y2 - y1}else{return d.y2 - y2}
@@ -429,12 +609,109 @@ function make_panels(svg, width, height){
     return [post, answer, question]
 }
 
+function make_nodes(panel, data, fixed, classed, center){
+    var nodes = panel.selectAll('.node')
+        .data(data).enter().append('g')
+        .attr('id', function(d){ return 'node_' + d.id})
+        .classed('fixed', fixed)
+        .classed(classed, true);
+
+    var boxes = nodes.append('rect').classed('border_rect', true)
+        .attr('width', 5).attr('height', 5)
+        .style('fill', 'white')
+        .style('stroke', 'black')
+        .attr('x', function(d){ return d.x})
+        .attr('y', function(d){ return d.y});
+
+    var html = nodes.append('foreignObject')
+        .attr('x', function(d){ return d.x })
+        .attr('y', function(d){ return d.y })
+
+    html.append('xhtml:div')
+        .classed('node_content', true)
+        .attr('id', function(d){ return 'div_' + d.id})
+        .html(function(d) { return post_html(d) })
+
+    html.attr('width', function(d) {return document.getElementById('div_' + d.id).getBoundingClientRect().width})
+        .attr('height', function(d) {return document.getElementById('div_' + d.id).getBoundingClientRect().height})
+
+    // resize_borders(groups);     *Someday*
+    boxes.attr("x", function() { return this.parentNode.getBBox().x - 5 })
+        .attr("y", function() { return this.parentNode.getBBox().y - 3 })
+        .attr("width", function() { return this.parentNode.getBBox().width + 10 })
+        .attr("height", function() { return this.parentNode.getBBox().height + 6 });
+
+
+    if (center){
+        nodes.each(function(d){
+            d.x = this.getBBox().x + 5;
+            d.x -= this.getBBox().width/2;
+        })
+            .attr("transform", function(d){ return "translate(" +  (- this.getBBox().width/2) + ",0)"})
+            .attr('x', function(d){ return d.x });
+    }
+
+    nodes.each(function(d){
+        d.height = this.getBBox().height
+        d.width = this.getBBox().width
+    })
+
+    return nodes
+}
+
+function make_links(edges){
+    var links = d3.select('.main').selectAll('.edge')
+        .data(edges).enter().append('g')
+        .attr('source', function(d){ return d.source})
+        .attr('target', function(d){ return d.target})
+        .classed('link', true)
+        .each(function(d){
+            var source = d3.select('[id=node_' + d.source + ']'),
+                target = d3.select('[id=node_' + d.target + ']');
+
+            d.x1 = source.data()[0].x + source.data()[0].width/2 - 5;
+            d.y1 = source.data()[0].y + source.data()[0].height/2 + 1;
+            d.x2 = target.data()[0].x + target.data()[0].width/2 - 5;
+            d.y2 = target.data()[0].y + target.data()[0].height/2 + 1;
+
+
+            d3.select(this).append('line')
+                .attr("marker-end", "url(#arrow)")
+                // .style('stroke','black').style('stroke-width',function(d){return d.width});
+                .style('stroke','black').style('stroke-width',function(d){return 2});
+            d3.select(this).append('text')
+                .text(function(d){ return d.type })
+                .attr('text-anchor','middle')
+                .classed('link-label', true);
+
+            reformat_link(this);
+
+            // send link to back
+            // send_to_back(this);
+        });
+
+    // define arrow tip
+    d3.select('svg').append("svg:defs").selectAll("marker")
+        .data(["arrow"])
+        .enter().append("svg:marker")
+        .attr("id", String)
+        .attr("viewBox", "0 -5 10 10")
+        .attr("refX", 10)
+        .attr("refY", 0)
+        .attr("markerWidth", 7)
+        .attr("markerHeight", 7)
+        .attr("orient", "auto")
+        .append("svg:path")
+        .attr("d", "M0,-5L10,0L0,5");
+
+    return links
+}
+
 function render_question(features){
     var nodes = features.nodes,
         edges = features.edges,
         relevant = features.relevant,
         svg = d3.select("svg"),
-        max_width = 300,
         width = parseInt(svg.style('width').match(/\d+/)[0]),
         height = parseInt(svg.style('height').match(/\d+/)[0]);
 
@@ -461,7 +738,7 @@ function render_question(features){
 
     var question_panel = main.selectAll('.question_panel')
         .data([{'data':0}]).enter().append('g')
-        .classed('post_panel', true);
+        .classed('question_panel', true);
 
     question_panel
         .append('rect')
@@ -482,41 +759,9 @@ function render_question(features){
 
     //// Question
     question['x'] = width/2;
-    question['y'] = 50;
+    question['y'] = 10;
 
-    var question_node = question_panel.selectAll('.node')
-        .data([question]).enter().append('g')
-        .attr('id', function(d){ return 'node_' + d.id})
-        .classed('fixed', true)
-        .classed('question_node', true);
-
-    var question_boxes = question_node.append('rect').classed('border_rect', true)
-        .attr('width', 5).attr('height', 5)
-        .style('fill', 'white')
-        .style('stroke', 'black')
-        .attr('x', function(d){ return d.x})
-        .attr('y', function(d){ return d.y});
-
-    question_node.append("text")
-        .attr("x",function(d){ return d.x})
-        .attr("y",function(d){ return d.y})
-        .text(function(d) {return d.body})
-        .attr('fill', 'black')
-        .attr('font-size', '20px');
-        // .attr('font-size', function(d){console.log(d.font);return d.font});
-
-    // resize_borders(groups);     *Someday*
-    question_boxes.attr("x", function() { return this.parentNode.getBBox().x - 5 })
-        .attr("y", function() { return this.parentNode.getBBox().y - 3 })
-        .attr("width", function() { return this.parentNode.getBBox().width + 10 })
-        .attr("height", function() { return this.parentNode.getBBox().height + 6 });
-
-    question_node
-        .each(function(d){
-            d.x -= this.getBBox().width/2
-        })
-        .attr("transform", function(d){ return "translate(" +  (- this.getBBox().width/2) + ",0)"})
-        .attr('x', function(d){ return d.x});
+    var question_node = make_nodes(question_panel, [question], true, 'question_node', true)
 
 
     //// Answers
@@ -532,34 +777,10 @@ function render_question(features){
         answer_ids.push(answers[a].id)
     }
 
-    var answer_nodes = post_panel.selectAll('.node')
-        .data(answers).enter().append('g')
-        .attr('id', function(d){ return 'node_' + d.id})
-        .classed('fixed', true);
-
-    var answer_boxes = answer_nodes.append('rect').classed('border_rect', true)
-        .attr('width', 5).attr('height', 5)
-        .style('fill', 'white')
-        .style('stroke', 'black')
-        .attr('x', function(d){ return d.x})
-        .attr('y', function(d){ return d.y});
-
-    answer_nodes.append("text")
-        .attr("x",function(d){ return d.x})
-        .attr("y",function(d){ return d.y})
-        .text(function(d) {return d.body})
-        .attr('fill', 'black')
-        .attr('font-size', '20px');
-        // .attr('font-size', function(d){console.log(d.font);return d.font});
-
-    // resize_borders(groups);     *Someday*
-    answer_boxes.attr("x", function() { return this.parentNode.getBBox().x - 5 })
-        .attr("y", function() { return this.parentNode.getBBox().y - 3 })
-        .attr("width", function() { return this.parentNode.getBBox().width + 10 })
-        .attr("height", function() { return this.parentNode.getBBox().height + 6 });
+    var answer_nodes = make_nodes(post_panel, answers, true, 'answer_node', false)
 
 
-    //// Starting position of posts (inherit from parents method)
+    //// Posts (inherit coords from parents)
     function inherit_position(parent_ids, done, nodes, edges){
         var up_next = [];
         for (var p=0; p<parent_ids.length; p++){
@@ -586,7 +807,7 @@ function render_question(features){
                         }
                     }
                     child_node[0]['x'] = parent_x.reduce(function(a,b){return a+b})/parent_x.length;
-                    child_node[0]['y'] = parent_y.reduce(function(a,b){return a+b})/parent_x.length + 100;
+                    child_node[0]['y'] = parent_y.reduce(function(a,b){return a+b})/parent_x.length + 150;
 
                     done.push(child_id)
                     up_next.push(child_id)
@@ -600,80 +821,31 @@ function render_question(features){
     }
     inherit_position(answer_ids, [], nodes, edges);
 
-    var post_nodes = post_panel.selectAll('.node')
-        .data(posts).enter().append('g')
-        .attr('id', function(d){ return 'node_' + d.id})
-        .classed('fixed', function(d){ return d.fixed });
-
-    var post_boxes = post_nodes.append('rect').classed('border_rect', true)
-        .attr('width', 5).attr('height', 5)
-        .style('fill', 'white')
-        .style('stroke', 'black')
-        .attr('x', function(d){ return d.x})
-        .attr('y', function(d){ return d.y});
-
-    post_nodes.append("text")
-        .attr("x",function(d){ return d.x})
-        .attr("y",function(d){ return d.y})
-        .text(function(d) {return d.body})
-        .attr('fill', 'black')
-        .attr('font-size', '20px');
-        // .attr('font-size', function(d){console.log(d.font);return d.font});
-
-    // resize_borders(groups);     *Someday*
-    post_boxes.attr("x", function() { return this.parentNode.getBBox().x - 5 })
-        .attr("y", function() { return this.parentNode.getBBox().y - 3 })
-        .attr("width", function() { return this.parentNode.getBBox().width + 10 })
-        .attr("height", function() { return this.parentNode.getBBox().height + 6 });
+    var post_nodes = make_nodes(post_panel, posts, false, 'post_node', false)
 
 
     //// Links
-    var links = main.selectAll('.link')
-        .data(edges).enter().append('g')
-        .attr('source', function(d){ return d.source})
-        .attr('target', function(d){ return d.target})
-        .each(function(d){
-            var source = d3.select('[id=node_' + d.source + ']'),
-                target = d3.select('[id=node_' + d.target + ']');
-
-            d.x1 = source.data()[0].x + source.node().getBBox().width/2 - 5;
-            d.y1 = source.data()[0].y;
-            d.x2 = target.data()[0].x + target.node().getBBox().width/2 - 5;
-            d.y2 = target.data()[0].y;
+    var links = make_links(edges)
 
 
-            d3.select(this).append('line')
-                .attr("marker-end", "url(#arrow)")
-                // .style('stroke','black').style('stroke-width',function(d){return d.width});
-                .style('stroke','black').style('stroke-width',function(d){return 2});
-            d3.select(this).append('text')
-                .text(function(d){ return d.type })
-                .attr('text-anchor','middle')
-                .classed('link-label', true);
+    //// Reply box
+    var reply_box = main.append('foreignObject');
 
-            reformat_link(this);
+    reply_box.append('xhtml:div')
+        .classed('reply_box', true)
+        .attr('id', "reply_box")
+        .html('<textarea id="text_reply"></textarea><button onclick="submit_post()">Reply</button>')
 
-            // send link to back
-            // send_to_back(this);
-        });
+    var bcr = document.getElementById("reply_box").getBoundingClientRect()
 
-     // define arrow tip
-    svg.append("svg:defs").selectAll("marker")
-        .data(["arrow"])
-        .enter().append("svg:marker")
-        .attr("id", String)
-        .attr("viewBox", "0 -5 10 10")
-        .attr("refX", 10)
-        .attr("refY", 0)
-        .attr("markerWidth", 7)
-        .attr("markerHeight", 7)
-        .attr("orient", "auto")
-        .append("svg:path")
-        .attr("d", "M0,-5L10,0L0,5");
+    reply_box.attr('width', bcr.width)
+        .attr('height', bcr.height)
+        .attr('x', width/2 - 80)
+        .attr('y', height - 100);
 
 
     //// Final touches
-    var all_postpanel_nodes = post_panel.selectAll('g')
+    var all_postpanel_nodes = post_panel.selectAll('g');
     post_panel.call(drag_with_links(all_postpanel_nodes, links, true));
-    equilibrate_nodes(all_postpanel_nodes, links, 5000);
+    equilibrate_nodes(all_postpanel_nodes, links, 3000)
 }
