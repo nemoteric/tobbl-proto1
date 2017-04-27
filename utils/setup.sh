@@ -6,3 +6,6 @@ venv/bin/pip3 install -r requirements.txt
 utils/db_init.sh
 utils/db_migrate.sh
 utils/db_upgrade.sh
+venv/bin/python3 test/sample_inputs.py
+
+
