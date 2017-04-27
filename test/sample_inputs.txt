@@ -1,0 +1,57 @@
+Can we almost clean up the oceans in next 10 years?;
+Calling this goal ambitious, would be an understatement. About 9 million tons of plastic are dumped into the world’s oceans every year
+A, 0;
+If preventive measures are taken to NOT dump further along with the clean up activity, We can reduce the plastic by 50% in next 10 years
+A, 0;
+Scientists expect the amount of plastic trash in the oceans to double in the next decade as developing countries increasingly use plastic without adequate systems to recycle it
+S, 1;
+Developing countries like India have completely banned plastics. If India, being one of the largest consumer and producer of goods, can reduce it, I am sure all developing countries can reduce the usage of plastic
+S, 2
+C, 1;
+I think that prevention and cleanup is highly complementary. If we can prevent it, we can surely clean it up by 50% in next 10 years
+S, 2
+C,1;;
+H1-B Visa restrictions are economic suicide;
+No, Until it is selected on merit
+A, 0;
+Yes, it is n economic suicide as job follows tech people. Two tech people can start up and create jobs where ever they are.Restricting them is rather disrupting the potential of employment generation
+A, 0;
+Local skilled tech people are already employed. Restricting H1-B cannot help unless we have more American techies in the market
+S, 2;
+But how do you decide merit. It is a subjective call. Subjectivity just leads to corruption in the system
+C, 1;
+Merit can decided using education background, experience in the role etc. I am sure there is a way to quantify that.
+C,3;;
+Banning Facebook and other social network applications is disrupting democracy and freedom of speech;
+Totally agree, It is just a political move to disconnect masses
+A, 0;
+What about the fake news and blasphemous content which influences youth
+A, 0;
+There is a way to deal with fake news.
+C, 2;
+Content, good or bad, needs to reach people. Social network educate people with everything going around the World. Having a video is rather more impactful and motivates a change
+C, 2
+S,1;
+Dude,It is not easy to detect a fake news. Not that social networking companies are not working on it, False stories are still out there
+C,3 ;
+It is better to just ban Facebook LIVE as thats doing more harm than good. Others stories do not have an impact.
+A,0;
+Facebook LIVE is violent and is of no use.
+S,6;;
+How I met your mother is underrated compared to FRIENDS;
+I used to think FRIENDS is the greatest show ever but then I saw HIMYM and realized FRIENDS is indeed the greatest show ever lol :D
+A, 0;
+FRIENDS is stagnant. It is overtly sweet and everyone likes it coz it is the show we grew up with
+A, 0;
+HIMYM is more real, really good when it was good and really sucked when it was bad. But at least, they took risks. The blue French horn, the goat, the pineapple, the ducky tie, the yellow umbrella, the playbook, all the barney rules (the platinum rule, the hot crazy scale, the cheerleader effect), non linear story tellings- I guess these aren't original enough, right?.
+S, 2;
+HIMYM sucked when it ended
+C,2;
+HIMYM copied FRIENDS- from characters to the place they met everyday
+C,2
+S,1;
+I think "HIMYM" wins when it comes to production value and story, but "Friends" wins the battle of pure comedy and endearing characters.  you feel satisfied when FRIENDS end
+S,5
+;;
+
+
