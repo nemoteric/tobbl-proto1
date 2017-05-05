@@ -21,10 +21,12 @@ def new_post(json):
     if post:
         emit('new_post', post)
 
+
 @socketio.on('upvote', namespace='/_thread')
 def upvote(json):
-    scores = thread_utils.upvote(json)
+    scores, clicks = thread_utils.upvote(json)
     emit('update_scores', scores)
+    emit('update_clicks', clicks)
 
 
 @socketio.on('render_question', namespace='/_thread')

@@ -5,18 +5,88 @@ from flask_login import current_user
 from flask import flash
 from .. import session
 import numpy as np
+import copy
 
 
-def upvote(json, root=True): # Should be able to do this in one query, but doing it iteratively for prototype
-    if root:
-        post = get_nodes("MATCH (p:Post {id: {id}}) "
-                         "SET p.score = p.score + 1 "
-                         "RETURN p", {'id': json['post_id']})
+def upvote(post_id):
+    def update_score(id):
+        rel = user_rels[id][0]
+        dscore = (rel['click'] + rel['sup'] - rel['chal']) / max((rel['click'] + rel['sup'] + rel['chal']),.0001) - rel['score']
+        rel['score'] += dscore
+        if rel['score'] < 0:
+            dscore -= rel['score']
+
+        if id in rels:
+            for r in rels[id]:
+                if r[1]=='SUPPORT':
+                    user_rels[r[0]][0]['sup'] += dscore/len(rels[id])
+                if r[1]=='CHALLENGE':
+                    user_rels[r[0]][0]['chal'] += dscore/len(rels[id])
+                update_score(r[0])
+
+    results = list(
+        session.run("MATCH (U:User {username: {username}}), (P:Post)-[rP:SUPPORT|CHALLENGE*]->(C:Post) " +
+                    "WHERE ID(P) = {post_id}"
+                    "MERGE (P)<-[rU1:INTERACT]-(U) " +
+                    "ON CREATE SET rU1.click = 0, rU1.sup=0, rU1.score=0, rU1.chal=0 " +
+                    "WITH U,P,C,rP,rU1 " +
+                    "MERGE (U)-[rU2:INTERACT]->(C) " +
+                    "ON CREATE SET rU2.click=0, rU2.sup=0, rU2.score=0, rU2.chal=0 " +
+                    "RETURN rP,rU1,rU2 ",
+                    {'post_id': post_id,
+                     'username': current_user.username}))
+
+    rels = {}
+    if not results:
+        results = list(
+            session.run("MATCH (U:User {username: {username}}), (P:Post) " +
+                        "WHERE ID(P) = {post_id}"
+                        "MERGE (P)<-[rU:INTERACT]-(U) " +
+                        "ON CREATE SET rU.click = 0, rU.sup=0, rU.score=0, rU.chal=0 " +
+                        "RETURN rU ",
+                        {'post_id': post_id,
+                         'username': current_user.username}))
+        click = results[0][0].end
+        user_rels = {click: (results[0][0].properties, results[0][0].id)}
     else:
-        post = get_nodes("MATCH (p:Post {id: {id}}) "
-                         "SET p.score = p.score + 1 "
-                         "RETURN p", {'id': json['post_id']})
-    print(post)
+        click = results[0][1].end
+        user_rels = {click: (results[0][1].properties, results[0][1].id)}
+        for res in results:
+            for r in res[0]:
+                try:
+                    rels[r.start].append((r.end, r.type))
+                except:
+                    rels[r.start] = [(r.end, r.type)]
+            user_rels[res[2].end] = (res[2].properties, res[2].id)
+
+    orig_rels = copy.deepcopy(user_rels)
+
+    user_rels[click][0]['click'] = 1 -  user_rels[click][0]['click']
+    update_score(click)
+
+    updated_rels = [{'id': user_rels[r][1], 'props': user_rels[r][0]} for r in user_rels]
+    updated_scores = [{'id': r, 'dscore': user_rels[r][0]['score'] - orig_rels[r][0]['score']} for r in user_rels]
+
+    clicks = list(
+        session.run( "UNWIND { rels } AS rel " +
+                     "MATCH ()-[r]-() " +
+                     "WHERE ID(r) = rel.id " +
+                     "SET r += rel.props "
+                     "RETURN r",
+                    {'rels': updated_rels}))
+
+    new_nodes = list(
+        session.run("UNWIND { nodes } AS node " +
+                     "MATCH (n) " +
+                     "WHERE ID(n) = node.id " +
+                     "SET n.score = round( 10^6 * (n.score + node.dscore)) / 10^6 "
+                     "RETURN n ",
+                     {'rels': updated_rels,
+                      'nodes': updated_scores}))
+
+    return [[{'score': node[0].properties['score'], 'id': node[0].id} for node in new_nodes],
+            [{'click': click[0].properties['click'], 'id': click[0].id} for click in clicks]]
+
 
 def get_question(question_id):
     query = "MATCH (Q:Question {id: {id}})<-[r*]-(p:Post) " + \

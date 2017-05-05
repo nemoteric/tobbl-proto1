@@ -52,7 +52,7 @@ def create_app(config_name):
     app.register_blueprint(main_blueprint)
 
     from .threads import threads as threads_blueprint
-    app.register_blueprint(threads_blueprint, url_prefix='/thread')
+    app.register_blueprint(threads_blueprint)
 
     # from .socket import socket as socket_blueprint
     # app.register_blueprint(socket_blueprint, url_prefix='/_socket')

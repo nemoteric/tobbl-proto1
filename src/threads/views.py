@@ -5,7 +5,7 @@ from flask_login import login_required, current_user
 from ..tools import get_nodes, get_uid
 
 
-@threads.route('/new', methods=['GET','POST'])
+@threads.route('/thread/new', methods=['GET','POST'])
 @login_required
 def new_thread():
     thread_id = get_uid('Thread')
@@ -13,7 +13,7 @@ def new_thread():
     return redirect('thread/%i' %thread_id)
 
 
-@threads.route('/<thread_id>', methods=['GET','POST'])
+@threads.route('/thread/<thread_id>', methods=['GET','POST'])
 @login_required
 def view_thread(thread_id):
     thread = get_nodes('MATCH (t:Thread) WHERE t.id={id} RETURN t LIMIT 1', {'id': int(thread_id)})
@@ -25,13 +25,13 @@ def view_thread(thread_id):
         return render_template('main/home.html')
 
 
-@threads.route('/test', methods=['GET','POST'])
+@threads.route('/thread/test', methods=['GET','POST'])
 @login_required
 def test():
     return render_template('test.html')
 
 
-@threads.route('/delete/<thread_id>')
+@threads.route('/thread/delete/<thread_id>')
 def delete_thread(thread_id):
     thread = get_nodes('MATCH (t:Thread {id: {id}}) RETURN t', {'id': thread_id})
     if thread:
@@ -42,3 +42,6 @@ def delete_thread(thread_id):
     return redirect(url_for('main.index'))
 
 
+@threads.route('/q/<question_id>')
+def render_question(question_id):
+    return render_template('threads/question.html')

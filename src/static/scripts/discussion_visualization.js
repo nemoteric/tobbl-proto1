@@ -22,8 +22,14 @@ function document_ready(){
         console.log(window.location.href)
     });
     socket.on('new_post', function(json){ new_post(json)});
+    socket.on('update_scores', function(scores){
+        update_scores(scores)
+    })
+    socket.on('update_clicks', function(clicks){
+        update_clicks(clicks)
+    })
 
-    socket.emit('render_question', {'question_id': 2});
+    socket.emit('render_question', {'question_id': parseInt(window.location.href.split('/')[4])});
 }
 
 var drag_this = d3.drag().subject(this)
@@ -58,6 +64,18 @@ var drag_LR = d3.drag().subject(this)
             d.xt = d3.event.x - d.x1;
         });
 
+function upvote(post_id){
+    open_socket().emit('upvote', post_id)
+}
+function update_scores(scores){
+    for (var s in scores){
+        $(`div#${scores[s].id} .post_score`).text(scores[s].score)
+    }
+}
+function update_clicks(clicks){
+    
+}
+
 function post_html(post){
     var post_time = new Date(0);
     post_time.setUTCSeconds(post['time']);
@@ -73,37 +91,37 @@ function post_html(post){
     });
     if (post['type'] == 'Question'){
         return `<div class="question_post post" id="${post['id']}">` +
-            `   <div class="body_div">` +
-            `      <div class="author">${post['author']}:</div>` +
-            `      <div class="post_text">${post['body']}</div>` +
-            `   </div>` +
-            `   <div class="post_footer">`+
-            `      <div class="left_footer">` +
-            `         <button onclick="upvote(${post['id']})">+</button>` +
-            `         <t id="score" class="post_score">${post['score']}</t>` +
-            `      </div>` +
-            `      <div class="right_footer">` +
-            `         <a onclick="reply(${post['id']}, 0)">Answer</a>` +
-            `      </div>` +
-            `   </div>` +
-            `</div>`
+                `   <div class="body_div">` +
+                `      <div class="author">${post['author']}:</div>` +
+                `      <div class="post_text">${post['body']}</div>` +
+                `   </div>` +
+                `   <div class="post_footer">`+
+                `      <div class="left_footer">` +
+                `         <button onclick="upvote(${post['id']})">+</button>` +
+                `         <t id="score" class="post_score">${post['score']}</t>` +
+                `      </div>` +
+                `      <div class="right_footer">` +
+                `         <a onclick="reply(${post['id']}, 0)">Answer</a>` +
+                `      </div>` +
+                `   </div>` +
+                `</div>`
     }else{
         return `<div class="post" id="${post['id']}">` +
-            `   <div class="body_div">` +
-            `      <div class="author">${post['author']}:</div>` +
-            `      <div class="post_text">${post['body']}</div>` +
-            `   </div>` +
-            `   <div class="post_footer">`+
-            `      <div class="left_footer">` +
-            `         <button onclick="upvote(${post['id']})">+</button>` +
-            `         <t id="score" class="post_score">${post['score']}</t>` +
-            `      </div>` +
-            `      <div class="right_footer">` +
-            `         <a onclick="reply(${post['id']}, 1)">Support</a>` +
-            `         <a onclick="reply(${post['id']}, 2)">Challenge</a>` +
-            `      </div>` +
-            `   </div>` +
-            `</div>`
+                `   <div class="body_div">` +
+                `      <div class="author">${post['author']}:</div>` +
+                `      <div class="post_text">${post['body']}</div>` +
+                `   </div>` +
+                `   <div class="post_footer">`+
+                `      <div class="left_footer">` +
+                `         <button onclick="upvote(${post['id']})">+</button>` +
+                `         <t id="score" class="post_score">${post['score']}</t>` +
+                `      </div>` +
+                `      <div class="right_footer">` +
+                `         <a onclick="reply(${post['id']}, 1)">Support</a>` +
+                `         <a onclick="reply(${post['id']}, 2)">Challenge</a>` +
+                `      </div>` +
+                `   </div>` +
+                `</div>`
     }
 }
 
@@ -328,7 +346,6 @@ function equilibrate_nodes(groups, links, time){
                         // d.force[0] += Math.max(-5, Math.min(5, (1 / ( (dist-ch-ph) * Math.cos(ang) + 0.001 )**2)))
                         // d.force[0] += Math.max(-5, Math.max(5, (1 / ( (dist-ch-ph) * Math.sin(ang) + 0.001 )**2)))
 
-                        console.log(d.force)
                     }
                 }
             });
@@ -621,7 +638,8 @@ function make_nodes(panel, data, fixed, classed, center){
         .style('fill', 'white')
         .style('stroke', 'black')
         .attr('x', function(d){ return d.x})
-        .attr('y', function(d){ return d.y});
+        .attr('y', function(d){ return d.y})
+        .attr("rx", 5).attr("ry", 5);
 
     var html = nodes.append('foreignObject')
         .attr('x', function(d){ return d.x })
@@ -674,15 +692,25 @@ function make_links(edges){
             d.x2 = target.data()[0].x + target.data()[0].width/2 - 5;
             d.y2 = target.data()[0].y + target.data()[0].height/2 + 1;
 
+            if (d.type == "CHALLENGE"){
+                d3.select(this).append('line')
+                    .attr("marker-end", "url(#arrow)")
+                    // .style('stroke','black').style('stroke-width',function(d){return d.width});
+                    .style('stroke','black')
+                    .style('stroke-width',function(d){return 2})
+                    .style("stroke-dasharray", ("3, 3"));
+            }else {
+                d3.select(this).append('line')
+                    .attr("marker-end", "url(#arrow)")
+                    // .style('stroke','black').style('stroke-width',function(d){return d.width});
+                    .style('stroke', 'black')
+                    .style('stroke-width', function (d) {return 2})
+            }
 
-            d3.select(this).append('line')
-                .attr("marker-end", "url(#arrow)")
-                // .style('stroke','black').style('stroke-width',function(d){return d.width});
-                .style('stroke','black').style('stroke-width',function(d){return 2});
-            d3.select(this).append('text')
-                .text(function(d){ return d.type })
-                .attr('text-anchor','middle')
-                .classed('link-label', true);
+            // d3.select(this).append('text')
+            //     .text(function(d){ return d.type })
+            //     .attr('text-anchor','middle')
+            //     .classed('link-label', true);
 
             reformat_link(this);
 
@@ -744,7 +772,7 @@ function render_question(features){
         .append('rect')
         .attr('width',width)
         .attr('height', 100)
-        .style('fill', 'green');
+        .style('fill', 'transparent');
 
 
     //// separate nodes by type
@@ -829,23 +857,23 @@ function render_question(features){
 
 
     //// Reply box
-    var reply_box = main.append('foreignObject');
-
-    reply_box.append('xhtml:div')
-        .classed('reply_box', true)
-        .attr('id', "reply_box")
-        .html('<textarea id="text_reply"></textarea><button onclick="submit_post()">Reply</button>')
-
-    var bcr = document.getElementById("reply_box").getBoundingClientRect()
-
-    reply_box.attr('width', bcr.width)
-        .attr('height', bcr.height)
-        .attr('x', width/2 - 80)
-        .attr('y', height - 100);
+    // var reply_box = main.append('foreignObject');
+    //
+    // reply_box.append('xhtml:div')
+    //     .classed('reply_box', true)
+    //     .attr('id', "reply_box")
+    //     .html('<textarea id="text_reply"></textarea><button onclick="submit_post()">Reply</button>')
+    //
+    // var bcr = document.getElementById("reply_box").getBoundingClientRect()
+    //
+    // reply_box.attr('width', bcr.width)
+    //     .attr('height', bcr.height)
+    //     .attr('x', width/2 - 80)
+    //     .attr('y', height - 100);
 
 
     //// Final touches
     var all_postpanel_nodes = post_panel.selectAll('g');
     post_panel.call(drag_with_links(all_postpanel_nodes, links, true));
-    equilibrate_nodes(all_postpanel_nodes, links, 3000)
+    equilibrate_nodes(all_postpanel_nodes, links, 1000)
 }
