@@ -10,6 +10,7 @@ function open_socket() {
     var socket = io.connect('http://' + document.domain + ':' + location.port + namespace);
     return socket
 }
+function question_id() { return parseInt(window.location.href.split('/')[4]) }
 
 function document_ready(){
     var socket = open_socket();
@@ -19,17 +20,20 @@ function document_ready(){
     });
     socket.on('connect', function() {
         socket.emit(window.location.href);
-        console.log(window.location.href)
+        
     });
-    socket.on('new_post', function(json){ new_post(json)});
+    socket.on('new_post', function(json){ new_post(json) });
     socket.on('update_scores', function(scores){
         update_scores(scores)
     })
     socket.on('update_clicks', function(clicks){
         update_clicks(clicks)
     })
+    socket.on('rooms', function(rooms){
+        console.log(rooms)
+    })
 
-    socket.emit('render_question', {'question_id': parseInt(window.location.href.split('/')[4])});
+    socket.emit('render_question', {'question_id': question_id()});
 }
 
 var drag_this = d3.drag().subject(this)
@@ -127,14 +131,11 @@ function post_html(post){
 
 function submit_post(){
     var textbox = $(`div#reply_box > textarea`);
-    // open_socket().emit('new_post', {
-    //     'body':textbox.val(),
-    //     // 'question_id': thread_id() // vulnerability
-    // });
+    open_socket().emit('new_post', {
+        'body': textbox.val(),
+        'question_id': question_id()
+    });
     textbox.val('');
-
-    new_post({'node': {'body': 'Hey there', 'id': 101, 'answering': false},
-        'edges': [{'source': 101, 'target': 48, 'type': 'OBJECT'}, {'source': 101, 'target': 42, 'type': 'SUPPORT'}]})
 }
 
 function reply(post_id, mode){
@@ -157,6 +158,8 @@ function new_post(json){
     var post = json['node'],
         edges = json['edges'],
         done = false;
+
+    console.log(json);
 
     if (post.hasOwnProperty('answering')){
         if (post['answering']){
@@ -743,6 +746,8 @@ function render_question(features){
         width = parseInt(svg.style('width').match(/\d+/)[0]),
         height = parseInt(svg.style('height').match(/\d+/)[0]);
 
+    console.log(edges)
+
 
     //// make panels
     var main = svg.selectAll('.main')
@@ -834,8 +839,8 @@ function render_question(features){
                             parent_y.push(parent[0]['y']);
                         }
                     }
-                    child_node[0]['x'] = parent_x.reduce(function(a,b){return a+b})/parent_x.length;
-                    child_node[0]['y'] = parent_y.reduce(function(a,b){return a+b})/parent_x.length + 150;
+                    child_node[0]['x'] = parent_x.reduce(function(a,b){return a+b})/parent_x.length + Math.random();
+                    child_node[0]['y'] = parent_y.reduce(function(a,b){return a+b})/parent_x.length + 150 + Math.random();
 
                     done.push(child_id)
                     up_next.push(child_id)
@@ -857,19 +862,19 @@ function render_question(features){
 
 
     //// Reply box
-    // var reply_box = main.append('foreignObject');
-    //
-    // reply_box.append('xhtml:div')
-    //     .classed('reply_box', true)
-    //     .attr('id', "reply_box")
-    //     .html('<textarea id="text_reply"></textarea><button onclick="submit_post()">Reply</button>')
-    //
-    // var bcr = document.getElementById("reply_box").getBoundingClientRect()
-    //
-    // reply_box.attr('width', bcr.width)
-    //     .attr('height', bcr.height)
-    //     .attr('x', width/2 - 80)
-    //     .attr('y', height - 100);
+    var reply_box = main.append('foreignObject');
+
+    reply_box.append('xhtml:div')
+        .classed('reply_box', true)
+        .attr('id', "reply_box")
+        .html('<textarea id="text_reply"></textarea><button onclick="submit_post()">Reply</button>')
+
+    var bcr = document.getElementById("reply_box").getBoundingClientRect()
+
+    reply_box.attr('width', bcr.width)
+        .attr('height', bcr.height)
+        .attr('x', width/2 - 80)
+        .attr('y', height - 100);
 
 
     //// Final touches

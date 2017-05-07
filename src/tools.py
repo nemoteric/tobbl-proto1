@@ -8,7 +8,7 @@ def get_uid(type):
         "ON CREATE SET id.count = 1 " + \
         "ON MATCH SET id.count = id.count + 1 " + \
         "RETURN id "
-    return get_nodes(query, {'type': type})[0]['count']
+    return list(session.run(query, {'type': type}))[0][0].properties['count']
 
 def get_nodes(query, params=None, sortby=None, reverse=False, format=None,
               labels=False, relationships=False, clicks=True):
