@@ -16,7 +16,8 @@ function document_ready(){
     var socket = open_socket();
 
     socket.on('render_question', function(data) {
-        render_question(data);
+        render_question(data[0]);
+        update_clicks(data[1]);
     });
     socket.on('connect', function() {
         socket.emit(window.location.href);
@@ -27,10 +28,10 @@ function document_ready(){
         update_scores(scores)
     })
     socket.on('update_clicks', function(clicks){
+        console.log(clicks)
         update_clicks(clicks)
     })
     socket.on('rooms', function(rooms){
-        console.log(rooms)
     })
 
     socket.emit('render_question', {'question_id': question_id()});
@@ -77,7 +78,12 @@ function update_scores(scores){
     }
 }
 function update_clicks(clicks){
-    
+    for (var c in clicks){
+        var button_val = '+'
+        if ( clicks[c] ){ button_val = '-' }
+        console.log(c, clicks[c])
+        $(`#div_${c} button.upvote`).text(button_val)
+    }
 }
 
 function post_html(post){
@@ -101,7 +107,7 @@ function post_html(post){
                 `   </div>` +
                 `   <div class="post_footer">`+
                 `      <div class="left_footer">` +
-                `         <button onclick="upvote(${post['id']})">+</button>` +
+                `         <button class="upvote" onclick="upvote(${post['id']})">+</button>` +
                 `         <t id="score" class="post_score">${post['score']}</t>` +
                 `      </div>` +
                 `      <div class="right_footer">` +
@@ -117,7 +123,7 @@ function post_html(post){
                 `   </div>` +
                 `   <div class="post_footer">`+
                 `      <div class="left_footer">` +
-                `         <button onclick="upvote(${post['id']})">+</button>` +
+                `         <button class="upvote" onclick="upvote(${post['id']})">+</button>` +
                 `         <t id="score" class="post_score">${post['score']}</t>` +
                 `      </div>` +
                 `      <div class="right_footer">` +
@@ -213,7 +219,7 @@ function new_post(json){
 function drag_with_links(groups, links, LR) {
     return d3.drag().subject(this)
         .on('start', function (d) {
-            if (d.x1){
+            if (d.xt){
                 d.x1 = d3.event.x - d.xt;
                 d.y1 = d3.event.y - d.yt;
             }else{
@@ -227,7 +233,7 @@ function drag_with_links(groups, links, LR) {
 
             if (LR) {
                 d3.select(this)
-                    .attr("transform", "translate(" + (d3.event.x - d.x1) + ",0)"); // + (d3.event.y - d.y1) + ")");
+                    .attr("transform", "translate(" + (d3.event.x - d.x1) + ",0)");
             }else{
                 d3.select(this)
                     .attr("transform", "translate(" + (d3.event.x - d.x1) + "," + (d3.event.y - d.y1) + ")");
@@ -250,6 +256,54 @@ function drag_with_links(groups, links, LR) {
                         }
                     });
             });
+
+            links.each(function(d){
+                reformat_link(this);
+            });
+        })
+        // .on('end', function () {
+        //     equilibrate_nodes(groups, links, 500)
+        // })
+        ;
+}
+
+function drag_this_with_links(links, LR) {
+    return d3.drag().subject(this)
+        .on('start', function (d) {
+            if (d.xt){
+                d.x1 = d3.event.x - d.xt;
+                d.y1 = d3.event.y - d.yt;
+            }else{
+                d.x1 = d3.event.x;
+                d.y1 = d3.event.y;
+            }
+        })
+        .on('drag', function (d) {
+            d.xt = d3.event.x - d.x1;
+            d.yt = d3.event.y - d.y1;
+
+            if (LR) {
+                d3.select(this)
+                    .attr("transform", "translate(" + (d3.event.x - d.x1) + ",0)");
+            }else{
+                d3.select(this)
+                    .attr("transform", "translate(" + (d3.event.x - d.x1) + "," + (d3.event.y - d.y1) + ")");
+            }
+
+            d3.selectAll('[source="' + d.id + '"]')
+                .each(function (d) {
+                    d.x1 = d.x1 + d3.event.dx;
+                    if(!LR) {
+                        d.y1 = d.y1 + d3.event.dy;
+                    }
+                });
+
+            d3.selectAll('[target="' + d.id + '"]')
+                .each(function (d) {
+                    d.x2 = d.x2 + d3.event.dx;
+                    d.y2 = d.y2 + d3.event.dy;
+                });
+
 
             links.each(function(d){
                 reformat_link(this);
@@ -740,13 +794,11 @@ function make_links(edges){
 
 function render_question(features){
     var nodes = features.nodes,
-        edges = features.edges,
+        edges = features.edges.filter(function(edge){ return edge.type!='ANSWER' }),
         relevant = features.relevant,
         svg = d3.select("svg"),
         width = parseInt(svg.style('width').match(/\d+/)[0]),
         height = parseInt(svg.style('height').match(/\d+/)[0]);
-
-    console.log(edges)
 
 
     //// make panels
@@ -880,5 +932,6 @@ function render_question(features){
     //// Final touches
     var all_postpanel_nodes = post_panel.selectAll('g');
     post_panel.call(drag_with_links(all_postpanel_nodes, links, true));
+    post_nodes.call(drag_this_with_links(links,false))
     equilibrate_nodes(all_postpanel_nodes, links, 1000)
 }

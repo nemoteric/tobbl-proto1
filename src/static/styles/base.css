@@ -19,12 +19,11 @@
     height: 34px;
     /*margin-top: 4px;*/
 }
-
-
 .navbar img{
     height: 34px;
     /*margin-top: 4px;*/
 }
+
 
 
 
@@ -42,33 +41,30 @@
     background-color: transparent;
 }
 
-.navbar .tftextinput2 {
+.navbar .searchbar {
     float: right;
-    /*background-color: #C9C19F;*/
-    /*font-size: 16px;*/
-    margin-top: 1px;
-    margin-right: 57px;
-    /*padding: 4px 10px;*/
+    margin-top: 3px;
+    margin-right: 4px;
     border: inherit 1px;
     font-family: Inconsolata;
     font-size: 13;
+    width: 155px;
     color: white;
     background-color: transparent;
 
 }
 
-.navbar .tfbutton2 {
+.navbar .search_button {
     float: right;
     /*background-color: #C9C19F;*/
     /*font-size: 16px;*/
     margin-top: 1px;
-    margin-right: 17px;
-    /*padding: 4px 10px;*/
-    border: inherit 1px;
-    font-family: Inconsolata;
-    font-size: 13;
+    margin-right: 7px;
+    padding: 2px;
+    height: 18px;
+    width: 18px;
+    /*border: outset 1px;*/
     color: black;
-    background-color: white;
 
 }
 

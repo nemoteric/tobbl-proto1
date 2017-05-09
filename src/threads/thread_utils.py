@@ -1,6 +1,6 @@
 import re
 from time import time
-from ..tools import get_nodes, get_uid
+from ..tools import get_uid
 from flask_login import current_user
 from flask import flash
 from .. import session
@@ -8,104 +8,30 @@ import numpy as np
 import copy
 
 
-def upvote(post_id):
-    def update_score(id):
-        rel = user_rels[id][0]
-        dscore = (rel['click'] + rel['sup'] - rel['chal']) / max((rel['click'] + rel['sup'] + rel['chal']),.0001) - rel['score']
-        rel['score'] += dscore
-        if rel['score'] < 0:
-            dscore -= rel['score']
-
-        if id in rels:
-            for r in rels[id]:
-                if r[1]=='SUPPORT':
-                    user_rels[r[0]][0]['sup'] += dscore/len(rels[id])
-                if r[1]=='CHALLENGE':
-                    user_rels[r[0]][0]['chal'] += dscore/len(rels[id])
-                update_score(r[0])
-
+def get_question(question_id):
     results = list(
-        session.run("MATCH (U:User {username: {username}}), (P:Post)-[rP:SUPPORT|CHALLENGE*]->(C:Post) " +
-                    "WHERE ID(P) = {post_id}"
-                    "MERGE (P)<-[rU1:INTERACT]-(U) " +
-                    "ON CREATE SET rU1.click = 0, rU1.sup=0, rU1.score=0, rU1.chal=0 " +
-                    "WITH U,P,C,rP,rU1 " +
-                    "MERGE (U)-[rU2:INTERACT]->(C) " +
-                    "ON CREATE SET rU2.click=0, rU2.sup=0, rU2.score=0, rU2.chal=0 " +
-                    "RETURN rP,rU1,rU2 ",
-                    {'post_id': post_id,
+        session.run("MATCH (Q:Question {uid: {uid}}), (U:User {username: {username}}) "
+                    "WITH Q,U "
+                    "OPTIONAL MATCH (Q)<-[pR:ANSWER|CHALLENGE|SUPPORT*]-(P:Post) "
+                    "WITH Q,U,pR,P "
+                    "OPTIONAL MATCH (P)<-[uR:INTERACT]-(U) " +
+                    "RETURN Q,pR,P,uR ",
+                    {'uid': int(question_id),
                      'username': current_user.username}))
 
-    rels = {}
-    if not results:
-        results = list(
-            session.run("MATCH (U:User {username: {username}}), (P:Post)-[:ANSWER]->(Q:Question) " +
-                        "WHERE ID(P) = {post_id}"
-                        "MERGE (P)<-[rU:INTERACT]-(U) " +
-                        "ON CREATE SET rU.click = 0, rU.sup=0, rU.score=0, rU.chal=0 " +
-                        "RETURN rU, Q ",
-                        {'post_id': post_id,
-                         'username': current_user.username}))
-        click = results[0][0].end
-        quid = results[0][1].properties['id']
-        user_rels = {click: (results[0][0].properties, results[0][0].id)}
-    else:
-        click = results[0][1].end
-        quid = list(session.run("MATCH (P:Post)-[:SUPPORT|CHALLENGE|ANSWER*]->(Q:Question) "
-                                "WHERE ID(P) = {post_id} "
-                                "RETURN Q",
-                                {'post_id': post_id
-                     }))[0][0].properties['id']
-        print(quid)
-        # quid = 4
-        user_rels = {click: (results[0][1].properties, results[0][1].id)}
-        for res in results:
-            for r in res[0]:
-                try:
-                    rels[r.start].append((r.end, r.type))
-                except:
-                    rels[r.start] = [(r.end, r.type)]
-            user_rels[res[2].end] = (res[2].properties, res[2].id)
-
-    orig_rels = copy.deepcopy(user_rels)
-
-    user_rels[click][0]['click'] = 1 -  user_rels[click][0]['click']
-    update_score(click)
-
-    updated_rels = [{'id': user_rels[r][1], 'props': user_rels[r][0]} for r in user_rels]
-    updated_scores = [{'id': r, 'dscore': user_rels[r][0]['score'] - orig_rels[r][0]['score']} for r in user_rels]
-
-    clicks = list(
-        session.run( "UNWIND { rels } AS rel " +
-                     "MATCH ()-[r]-() " +
-                     "WHERE ID(r) = rel.id " +
-                     "SET r += rel.props "
-                     "RETURN r",
-                    {'rels': updated_rels}))
-
-    new_nodes = list(
-        session.run("UNWIND { nodes } AS node " +
-                     "MATCH (n) " +
-                     "WHERE ID(n) = node.id " +
-                     "SET n.score = round( 10^6 * (n.score + node.dscore)) / 10^6 "
-                     "RETURN n ",
-                     {'rels': updated_rels,
-                      'nodes': updated_scores}))
-
-    return [{'score': node[0].properties['score'], 'id': node[0].id} for node in new_nodes],\
-           [{'click': click[0].properties['click'], 'id': click[0].id} for click in clicks], \
-           quid
+    clicks = {}
+    for res in results:
+        try:
+            clicks[res[3].end] = res[3].properties['click']>0
+        except:
+            pass
 
 
-def get_question(question_id):
-    query = "MATCH (Q:Question {id: {id}})<-[r:ANSWER|CHALLENGE|SUPPORT*]-(p:Post) " + \
-            "RETURN Q,r,p "
-    params = {'id': int(question_id)}
+    raw = [[item[i] for i in range(len(item)-1)] for item in results]
 
-    query_results = list(session.run(query, params))
-    raw = [[item[i] for i in range(len(item))] for item in query_results]
+    nodes = [{**node.properties, **{'id': node.id, 'type': list(node.labels)[0]}}
+             for node in [raw[0][0]]+[r[2] for r in raw] if node is not None]
 
-    nodes = [{**node.properties, **{'id': node.id, 'type': list(node.labels)[0]}} for node in [raw[0][0]]+[r[2] for r in raw]]
     node_ids = []
     n=0
     while n < len(nodes):
@@ -115,7 +41,8 @@ def get_question(question_id):
             node_ids.append(nodes[n]['id'])
             n += 1
 
-    edges = [{'source': edge.start, 'target': edge.end, 'type': edge.type} for edge in [r[1][-1] for r in raw]]
+    edges = [{'source': edge.start, 'target': edge.end, 'type': edge.type}
+             for edge in [r[1][-1] for r in raw if r[1] is not None]]
 
     ## Find nodes that should appear when an answer is selected
     def get_relevant(node, relevant):
@@ -132,7 +59,23 @@ def get_question(question_id):
         return relevant
 
     relevant_to_answers = dict([(nodes[n]['id'], get_relevant(n,[])) for n in range(len(nodes)) if 'answering' in nodes[n].keys()])
-    return {'nodes': nodes, 'edges': edges, 'relevant': relevant_to_answers}
+    return {'nodes': nodes, 'edges': edges, 'relevant': relevant_to_answers}, clicks
+
+
+def new_question(question):
+    result = list(
+        session.run("MATCH (U:User {username {username}}) "
+                    "CREATE (Q:Question { props })<-[:AUTHOR]-(U) "
+                    "RETURN Q ",
+                    {'username': current_user.username,
+                     'props': {
+                         'author': current_user.username,
+                         'time': time(),
+                         'score': 0,
+                         'body': question['body'],
+                         'uid': get_uid('Question')
+                     }}))[0]
+    return {**result.properties, **{'id': results.id}}
 
 
 def new_post(json): # Should be able to do this in one query, but doing it for each edge-case for prototype
@@ -144,64 +87,28 @@ def new_post(json): # Should be able to do this in one query, but doing it for e
 
     json['body'] = re.sub('([~\^!]*@[0-9]+)', '', json['body']).strip()
 
-    # if re.match('(\?)', json['body']):
-    #     if len(supporting) | len(objecting):
-    #         flash("Can't support or object and also ask a question")
-    #         return
-    #     if 'thread_id' in json.keys():
-    #         post = get_nodes("MATCH (t:Thread {id: {thread_id}}), (u:User {username: {username}}) " +
-    #                          "CREATE (t)-[:CONTAINS]->(Q:Question { props })<-[:AUTHOR]-(u) " +
-    #                          "SET Q.score = 0 " +
-    #                          "RETURN Q", {'thread_id': int(json['thread_id']),
-    #                                       'username': current_user.username,
-    #                                       'props': {'body': json['body'][re.match('(\?)+', '?? eyy').span()[1]:].strip(),
-    #                                                 'id': get_uid('Question'),
-    #                                                 'author': current_user.username,
-    #                                                 'time': time()}
-    #                                       })[0]
-    #     else:
-    #         post = get_nodes("(u:User {username: {username}}) " +
-    #                          "CREATE (Q:Question { props })<-[:AUTHOR]-(u) " +
-    #                          "SET Q.score = 0 " +
-    #                          "RETURN Q", {'username': current_user.username,
-    #                                       'props': {
-    #                                           'body': json['body'][re.match('(\?)+', '?? eyy').span()[1]:].strip(),
-    #                                           'id': get_uid('Question'),
-    #                                           'author': current_user.username,
-    #                                           'time': time()}
-    #                                       })[0]
-
     if len(answering) & (len(supporting) | len(challenging)):
         flash("Can't support or object and also answer")
         return
+
     elif len(answering) == 1:
-        post = get_nodes("MATCH (u:User {username: {username}}), (Q:Question) " +
-                         "WHERE ID(Q)=={answering} " +
-                         "CREATE (A:Post { props })<-[:AUTHOR]-(u), (Q)<-[:ANSWER]-(A) " +
+        results = list(
+            session.run( "MATCH (u:User {username: {username}}), (Q:Question) " +
+                         "WHERE ID(Q) in {answering} " +
+                         "CREATE (A:Post { props })<-[:AUTHOR]-(u), (Q)<-[rA:ANSWER]-(A) " +
                          "SET A.score = 0 " +
-                         "RETURN A", {'answering': answering,
+                         "RETURN A, rA", {'answering': answering,
                                       'username': current_user.username,
                                       'props': {'body': json['body'],
-                                                'id': get_uid('Post'),
+                                                'uid': get_uid('Post'),
                                                 'author': current_user.username,
                                                 'answering': True,
                                                 'time': time()}
-                                      })[0]
-    # elif len(supporting) & len(objecting) & len(replying):
-    #     post = get_nodes("MATCH (u:User {username: {username}}), (sp:Post), (op:Post), (rp:Post) " +
-    #                      "WHERE sp.id IN {supporting} AND op.id IN {objecting} AND rp.id IN {replying} " +
-    #                      "CREATE (p:Post { props })<-[:AUTHOR]-(u), (sp)<-[:SUPPORT]-(p), (op)<-[:OBJECT]-(p), (rp)<-[:REPLY]-(p) " +
-    #                      "SET p.score = 0 " + \
-    #                      "RETURN p",  {'supporting': supporting,
-    #                                    'objecting': objecting,
-    #                                    'replying': replying,
-    #                                    'username': current_user.username,
-    #                                    'props': {'body': json['body'],
-    #                                             'id': get_uid('Post'),
-    #                                             'author': current_user.username,
-    #                                             'type': 'Post',
-    #                                             'time': time()}
-    #                                   })[0]
+                                      }))
+
+        node = {**results[0][0].properties, **{'id': results[0][0].id}}
+        rels = [{'source': results[0][1].start, 'target': results[0][1].end, 'type': results[0][1].type}]
+
     elif len(supporting) & len(challenging):
         results = list(
             session.run( "MATCH (u:User {username: {username}}), (sp:Post), (op:Post) " +
@@ -213,7 +120,7 @@ def new_post(json): # Should be able to do this in one query, but doing it for e
                            'challenging': challenging,
                            'username': current_user.username,
                            'props': {'body': json['body'],
-                                    'id': get_uid('Post'),
+                                    'uid': get_uid('Post'),
                                     'author': current_user.username,
                                     'type': 'Post',
                                     'time': time()}
@@ -232,34 +139,7 @@ def new_post(json): # Should be able to do this in one query, but doing it for e
                 else:
                     done[r.start] = [r.end]
                     rels.append({'source': r.start, 'target': r.end, 'type': r.type})
-    # elif len(supporting) & len(replying):
-    #     post = get_nodes("MATCH (u:User {username: {username}}), (sp:Post), (rp:Post) " +
-    #                      "WHERE sp.id IN {supporting} AND rp.id IN {replying} " +
-    #                      "CREATE (p:Post { props })<-[:AUTHOR]-(u), (sp)<-[:SUPPORT]-(p), (rp)<-[:REPLY]-(p) " +
-    #                      "SET p.score = 0 " +
-    #                      "RETURN p",  {'supporting': supporting,
-    #                                    'replying': replying,
-    #                                    'username': current_user.username,
-    #                                    'props': {'body': json['body'],
-    #                                             'id': get_uid('Post'),
-    #                                             'author': current_user.username,
-    #                                             'type': 'Post',
-    #                                             'time': time()}
-    #                                   })[0]
-    # elif len(objecting) & len(replying):
-    #     post = get_nodes("MATCH (u:User {username: {username}}), (op:Post), (rp:Post) " +
-    #                      "WHERE op.id IN {objecting} AND rp.id IN {replying} " +
-    #                      "CREATE (p:Post { props })<-[:AUTHOR]-(u), (op)<-[:OBJECT]-(p), (rp)<-[:REPLY]-(p) " +
-    #                      "SET p.score = 0 " +
-    #                      "RETURN p", { 'replying': replying,
-    #                                    'objecting': objecting,
-    #                                    'username': current_user.username,
-    #                                    'props': {'body': json['body'],
-    #                                             'id': get_uid('Post'),
-    #                                             'author': current_user.username,
-    #                                             'type': 'Post',
-    #                                             'time': time()}
-    #                                   })[0]
+
     elif supporting:
         results = list(
             session.run( "MATCH (u:User {username: {username}}) " +
@@ -273,13 +153,14 @@ def new_post(json): # Should be able to do this in one query, but doing it for e
                           {'supporting': supporting,
                            'username': current_user.username,
                            'props': {'body': json['body'],
-                                    'id': get_uid('Post'),
+                                    'uid': get_uid('Post'),
                                     'author': current_user.username,
                                     'type': 'Post',
                                     'time': time()}
                           }))
         node = {**results[0][0].properties, **{'id': results[0][0].id}}
         rels = [{'source': res[1].start, 'target': res[1].end, 'type': res[1].type} for res in results]
+
     elif challenging:
         results = list(
             session.run( "MATCH (u:User {username: {username}}) " +
@@ -293,36 +174,122 @@ def new_post(json): # Should be able to do this in one query, but doing it for e
                           {'challenging': challenging,
                            'username': current_user.username,
                            'props': {'body': json['body'],
-                                    'id': get_uid('Post'),
+                                    'uid': get_uid('Post'),
                                     'author': current_user.username,
                                     'type': 'Post',
                                     'time': time()}
                           }))
         node = {**results[0][0].properties, **{'id': results[0][0].id}}
         rels = [{'source': res[1].start, 'target': res[1].end, 'type': res[1].type} for res in results]
-    # elif replying:
-    #     ## new post with all replying relationships
-    #     post = get_nodes("MATCH (u:User {username: {username}}), (rp:Post) " +
-    #                      "WHERE rp.id IN {replying} " +
-    #                      "CREATE (p:Post { props })<-[:AUTHOR]-(u), (rp)<-[:REPLY]-(p) " +
-    #                      "SET p.score = 0 " +
-    #                      "RETURN p", {'replying': replying,
-    #                                   'username': current_user.username,
-    #                                   'props': {'body': json['body'],
-    #                                             'id': get_uid('Post'),
-    #                                             'author': current_user.username,
-    #                                             'type': 'Post',
-    #                                             'time': time()}
-    #                                   })[0]
-    # else:
-    #     post = get_nodes("MATCH (u:User {username: {username}}) " +
-    #                      "CREATE (p:Post { props })<-[:AUTHOR]-(u) " +
-    #                      "SET p.score = 0 " +
-    #                      "RETURN p", {'username': current_user.username,
-    #                                   'props': {'body': json['body'],
-    #                                             'id': get_uid('Post'),
-    #                                             'author': current_user.username,
-    #                                             'type': 'Post',
-    #                                             'time': time()}
-    #                                   })[0]
+
+    else:
+        return
+
     return {'node': node, 'edges': rels}
+
+
+def upvote(post_id):
+
+    def update_score(id):
+        rel = user_rels[id][0]
+        dscore = rel['click'] + rel['sup'] - rel['chal'] - rel['score']
+        rel['score'] += dscore
+        if rel['score'] < 0:
+            dscore -= rel['score']
+
+        if id in rels:
+            for r in [r for r in rels[id] if r[1]!='ANSWER']:
+                if r[1]=='SUPPORT':
+                    user_rels[r[0]][0]['sup'] += dscore/len(rels[id])
+                if r[1]=='CHALLENGE':
+                    user_rels[r[0]][0]['chal'] += dscore/len(rels[id])
+                update_score(r[0])
+
+
+    results = list(
+        session.run("MATCH (U:User {username: {username}}), (P:Post)-[:SUPPORT|CHALLENGE|ANSWER*]->(Q:Question) "
+                    "WHERE ID(P) = {post_id} "
+                    "MERGE (U)-[cR:INTERACT]->(P) "
+                    "ON CREATE SET cR.click=0, cR.sup=0, cR.chal=0, cR.score=0 "
+                    "WITH Q,U,P "
+                    "OPTIONAL MATCH (P)-[:SUPPORT|CHALLENGE*]->(rP) "
+                    "FOREACH (o IN CASE WHEN rP IS NOT NULL THEN [rP] ELSE [] END | "
+                    "   MERGE (rP)<-[rR:INTERACT]-(U) "
+                    "   ON CREATE SET rR.click=0, rR.sup=0, rR.score=0, rR.chal=0 "
+                    ") "
+                    "WITH U,Q "
+                    "MATCH (U)-[iR:INTERACT]->(P:Post)-[allR:ANSWER|SUPPORT|CHALLENGE*]->(Q) "
+                    "RETURN distinct iR, allR, Q ",
+                    {'post_id': post_id,
+                     'username': current_user.username}))
+
+    rels = {}
+    user_rels = {}
+    ends = []
+    if not results:
+        results = list(
+            session.run("MATCH (U:User {username: {username}}), (P:Post)-[:ANSWER]->(Q:Question) " +
+                        "WHERE ID(P) = {post_id} "
+                        "MERGE (P)<-[rU:INTERACT]-(U) " +
+                        "ON CREATE SET rU.click = 0, rU.sup=0, rU.score=0, rU.chal=0 " +
+                        "RETURN rU, Q ",
+                        {'post_id': post_id,
+                         'username': current_user.username}))
+
+        quid = results[0][1].properties['uid']
+        user_rels[post_id] = (results[0][0].properties, results[0][0].id)
+    else:
+        quid = results[0][2].properties['uid']
+        for res in results:
+            for r in res[1]:
+                try:
+                    if r.end not in [rel[0] for rel in rels[r.start]]:
+                        rels[r.start].append((r.end, r.type))
+                except:
+                    rels[r.start] = [(r.end, r.type)]
+                ends.append(r.end)
+            user_rels[res[0].end] = (res[0].properties, res[0].id)
+
+    orig_rels = copy.deepcopy(user_rels)
+
+    ## Click or un-click the selected post
+    if user_rels[post_id][0]['click'] > 0:
+        user_rels[post_id][0]['click'] = 0
+    else:
+        user_rels[post_id][0]['click'] = 1
+
+    ## split click share evenly
+    clicked = [r for r in user_rels if user_rels[r][0]['click']>0]
+    for r in clicked:
+        user_rels[r][0]['click'] = 1/len(clicked)
+
+    ## Update all nodes starting at highest nodes
+    for s in [u for u in user_rels if u not in ends]:
+        update_score(s)
+
+
+    updated_rels = [{'id': user_rels[r][1], 'props': user_rels[r][0]} for r in user_rels]
+    updated_scores = [{'id': r, 'dscore': user_rels[r][0]['score'] - orig_rels[r][0]['score']} for r in user_rels]
+
+    click_res = list(
+        session.run( "UNWIND { rels } AS rel " +
+                     "MATCH ()-[r]-() " +
+                     "WHERE ID(r) = rel.id " +
+                     "SET r += rel.props "
+                     "RETURN distinct r",
+                    {'rels': updated_rels}))
+
+    new_nodes = list(
+        session.run("UNWIND { nodes } AS node " +
+                     "MATCH (n) " +
+                     "WHERE ID(n) = node.id " +
+                     "SET n.score = round( 10^6 * (n.score + node.dscore)) / 10^6 "
+                     "RETURN distinct n ",
+                     {'rels': updated_rels,
+                      'nodes': updated_scores}))
+
+    clicks = {}
+    for click in click_res:
+        clicks[click[0].end] = click[0].properties['click']>0
+
+    return [{'score': node[0].properties['score'], 'id': node[0].id} for node in new_nodes], clicks, quid

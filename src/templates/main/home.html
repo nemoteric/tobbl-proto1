@@ -11,40 +11,79 @@
     </script>
 {% endblock %}
 
+
+
 {% block content %}
-    <body style='background-color:#FFFFFF'>
-        <div class="style6">Follow your favourite topic</div>
-        <div class="style1">
-            <ul><font class='b1'>Top Social</font>
-                <li><a href="/thread/ocean">Ocean</a></li>
-                <li><a href="/thread/LGBT">LGBT</a></li>
-                <li><a href="/thread/Abuse">Abuse</a></li>
-            </ul>
+
+    <div id="questions">
+        {% for question in questions %}
+            <div id="question_{{ question.uid }}" class="question_container">
+                <div class="question">
+                    <div class="score_box">
+                        <a class="score">{{ question.score }}</a>
+                        <button class="upvote" onclick="upvote({{ question.id }})">
+                            {% if clicks[question.uid] %}
+                                -
+                            {% else %}
+                                +
+                            {% endif %}
+                        </button>
+                    </div>
+                    <div class="content">
+                        <a class="body" href="/q/{{ question.uid }}">{{ question.body }}</a>
+                    </div>
+                </div>
+                {% for answer in question.answers %}
+                    <div class="answer">
+                        <a class="score">{{ answer.score }}%</a>
+                        <a class="body">{{ answer.body }}</a>
+                    </div>
+                {% endfor %}
             </div>
-        <div class="style2">
-             <ul><font class='b1'>Top Political</font>
-                 <li><a href="/thread/immigrants">Immigrants</a></li>
-                 <li><a href="/thread/Border">Border</a></li>
-                 <li><a href="/thread/H1B">H1B</a></li>
-             </ul>
-        </div>
+        {% endfor %}
+    </div>
 
-        <div class="style3">
-             <ul><font class='b1'>Top Economic</font>
-                 <li><a href="/thread/Tax">Tax</a></li>
-                 <li><a href="/thread/Pension">Pension</a></li>
-                 <li><a href="/thread/EqualPay">EqualPay</a></li>
-             </ul>
-        </div>
+    <a id="ask_question" onclick="ask_question()">Or ask a new question!</a>
+    <div id="new_question" style="display: none;">
+        <input id="question_text" type="text">
+        <button id="submit_question" onclick="submit_question()">Ask</button>
+    </div>
 
-        <div class="style4">
-             <ul><font class='b1'>Others</font>
-                 <li><a href="/thread/Terrorism">Terrorism</a></li>
-                 <li><a href="/thread/Health">Health Care</a></li>
-                 <li><a href="/thread/JobHunting">Job Hunting</a></li>
-             </ul>
-        </div>
-        <br>
-        <div class="style5">or raise a <a href="/thread/new">New Issue</a></div>
-    </body>
+
+
+{#    <body style='background-color:#FFFFFF'>#}
+{#        <div class="style6">Follow your favourite topic</div>#}
+{#        <div class="style1">#}
+{#            <ul><font class='b1'>Top Social</font>#}
+{#                <li><a href="/thread/ocean">Ocean</a></li>#}
+{#                <li><a href="/thread/LGBT">LGBT</a></li>#}
+{#                <li><a href="/thread/Abuse">Abuse</a></li>#}
+{#            </ul>#}
+{#            </div>#}
+{#        <div class="style2">#}
+{#             <ul><font class='b1'>Top Political</font>#}
+{#                 <li><a href="/thread/immigrants">Immigrants</a></li>#}
+{#                 <li><a href="/thread/Border">Border</a></li>#}
+{#                 <li><a href="/thread/H1B">H1B</a></li>#}
+{#             </ul>#}
+{#        </div>#}
+{##}
+{#        <div class="style3">#}
+{#             <ul><font class='b1'>Top Economic</font>#}
+{#                 <li><a href="/thread/Tax">Tax</a></li>#}
+{#                 <li><a href="/thread/Pension">Pension</a></li>#}
+{#                 <li><a href="/thread/EqualPay">EqualPay</a></li>#}
+{#             </ul>#}
+{#        </div>#}
+{##}
+{#        <div class="style4">#}
+{#             <ul><font class='b1'>Others</font>#}
+{#                 <li><a href="/thread/Terrorism">Terrorism</a></li>#}
+{#                 <li><a href="/thread/Health">Health Care</a></li>#}
+{#                 <li><a href="/thread/JobHunting">Job Hunting</a></li>#}
+{#             </ul>#}
+{#        </div>#}
+{#        <br>#}
+{#        <div class="style5">or raise a <a href="/thread/new">New Issue</a></div>#}
+{#    </body>#}
 {% endblock %}

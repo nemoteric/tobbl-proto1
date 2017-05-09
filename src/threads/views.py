@@ -2,7 +2,6 @@ from . import threads
 from datetime import datetime
 from flask import render_template, redirect, url_for, flash, jsonify, request
 from flask_login import login_required, current_user
-from ..tools import get_nodes, get_uid
 
 
 @threads.route('/thread/new', methods=['GET','POST'])
@@ -45,3 +44,4 @@ def delete_thread(thread_id):
 @threads.route('/q/<question_id>')
 def render_question(question_id):
     return render_template('threads/question.html')
+

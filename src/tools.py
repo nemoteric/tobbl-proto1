@@ -10,38 +10,38 @@ def get_uid(type):
         "RETURN id "
     return list(session.run(query, {'type': type}))[0][0].properties['count']
 
-def get_nodes(query, params=None, sortby=None, reverse=False, format=None,
-              labels=False, relationships=False, clicks=True):
-    query_results = list(session.run(query, params))
-    results = [[item[i].properties for i in range(len(item))] for item in query_results]
-    # if all(map(lambda x: len(x)==1,  results)):
-    #     results = reduce(lambda x, y: x + y, results)
-    if labels:
-        for i in range(len(results)):
-            results[i]['label'] = [e for e in query_results[i][0].labels][0].lower()
-    if relationships:
-        for i in range(len(results)):
-            results[i]['relationship'] = query_results[i][1].type.lower()
-    if clicks:
-        pass
-    if sortby:
-        results = sorted(results, key=itemgetter(sortby), reverse=reverse)
-    if format == 'json':
-        dict = {}
-        for item in results:
-            if labels:
-                dict[item['label'] + '_' + str(item['id'])] = item
-            else:
-                dict[item['id']] = item
-
-        results = dict
-    # if len(results)==1 and isinstance(results, list):
-    #     return results[0]
-    return results
-
-def get_node_property(query, data, prop):
-    prop = [item[0].properties[prop] for item in session.run(query, data)]
-    return prop
+# def get_nodes(query, params=None, sortby=None, reverse=False, format=None,
+#               labels=False, relationships=False, clicks=True):
+#     query_results = list(session.run(query, params))
+#     results = [[item[i].properties for i in range(len(item))] for item in query_results]
+#     # if all(map(lambda x: len(x)==1,  results)):
+#     #     results = reduce(lambda x, y: x + y, results)
+#     if labels:
+#         for i in range(len(results)):
+#             results[i]['label'] = [e for e in query_results[i][0].labels][0].lower()
+#     if relationships:
+#         for i in range(len(results)):
+#             results[i]['relationship'] = query_results[i][1].type.lower()
+#     if clicks:
+#         pass
+#     if sortby:
+#         results = sorted(results, key=itemgetter(sortby), reverse=reverse)
+#     if format == 'json':
+#         dict = {}
+#         for item in results:
+#             if labels:
+#                 dict[item['label'] + '_' + str(item['id'])] = item
+#             else:
+#                 dict[item['id']] = item
+#
+#         results = dict
+#     # if len(results)==1 and isinstance(results, list):
+#     #     return results[0]
+#     return results
+#
+# def get_node_property(query, data, prop):
+#     prop = [item[0].properties[prop] for item in session.run(query, data)]
+#     return prop
 
 #
 # def make_comment(data):

@@ -13,27 +13,30 @@
         <script type="text/javascript" src="{{ url_for('static',filename='scripts/jquery.min.js') }}"></script>
         <script type="text/javascript" src="{{ url_for('static',filename='scripts/socket.io.min.js') }}"></script>
         <script type="text/javascript" src="{{ url_for('static',filename='scripts/d3.min.js') }}"></script>
+        <script>
+            function search() {
+                var terms = $('#search').val();
+                if (terms){
+                    window.location = '/results?key=' + encodeURIComponent(terms)
+                }
+            }
+        </script>
     {% endblock %}
-
-
   </head>
 
 
   <body>
         <div class="navbar">
-            <form id="tfnewsearch" method='get' action='http://www.google.com'>
             <a href="/"><img src="{{ url_for('static',filename='images/tobbl.png') }}" height="40" ></a>
 
             {% if current_user.is_authenticated %}
-                <button class="icon" onclick="location.href = '/logout';">Logout</button>
+                <button class="icon" onclick="location.href = '/logout'">logout, {{ current_user.username }}</button>
             {% else %}
                 <button class="icon" onclick="location.href = '/login'">Login</button>
             {% endif %}
-            <!-- HTML for SEARCH BAR -->
-            <input type='text' id="tfq2b" class='tftextinput2' name="q" size="21" maxlength="120" value="">
-            <input type="submit" value="Search" class="tfbutton2">
-            </form>
 
+            <input type="image" class="search_button" src="{{ url_for('static',filename='images/search2.png') }}" onclick="search()"></input>
+            <input class="searchbar" type="text" id="search">
 
         </div>
 

@@ -1,7 +1,6 @@
 from .. import socketio
 from .. import session
 from flask_socketio import emit, join_room, leave_room, rooms
-from ..tools import get_nodes
 from . import thread_utils
 import numpy as np
 
@@ -33,8 +32,8 @@ def upvote(json):
 
 @socketio.on('render_question', namespace='/_thread')
 def render_thread(json):
-    question = thread_utils.get_question(json['question_id'])
+    question, clicks = thread_utils.get_question(json['question_id'])
     join_room('question_%i' % json['question_id'])
     emit('rooms', ','.join(rooms()))
-    emit('render_question', question)
+    emit('render_question', [question, clicks])
 
