@@ -318,3 +318,10 @@ def upvote(post_id):
         clicks[click[0].end] = click[0].properties['click']>0
 
     return [{'score': node[0].properties['score'], 'id': node[0].id} for node in new_nodes], clicks, quid
+
+
+def move_node(node):
+    session.run('MATCH (P:Post) '
+                'WHERE ID(P)={id} '
+                'SET P.x = {x}, P.y = {y} ',
+                node)

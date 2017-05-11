@@ -34,6 +34,7 @@ function document_ready(){
     })
     socket.on('rooms', function(rooms){
     })
+    socket.on('move_node', function(data) { update_node_position(data) })
 
     socket.emit('render_question', {'question_uid': question_uid(), 'type': 'question'});
 }
@@ -140,7 +141,7 @@ function render_question(features){
         .data([{'data':0}]).enter().append('g')
         .classed('answer_footer', true)
         .append('rect')
-        .attr('width',268)
+        .attr('width', width)
         .attr('height', 100)
         .attr('x', 1)
         .attr('y', height - 100 )
@@ -157,15 +158,18 @@ function render_question(features){
         // .attr('stroke', '#808D8D')
         // .attr('stroke-width', 1)
         .style('fill', question_color);
+        console.log(question_panel)
 
 
     //// Question
     if (head['type'] == 'question'){
         head['node']['x'] = width/2;
-        head['node']['y'] = 10;
+        head['node']['y'] = 15;
         var question_node = make_nodes(question_panel, [head['node']], true, 'question_node', true)
-        question_node.attr('transform', `translate(0,${50 - parseInt(question_node.attr('height'))/2})`)
+        question_panel.select('rect').attr('height', 30 + parseInt(question_node.data()[0]['height']))
     }
+
+
 
 
     //// separate nodes by type
@@ -186,7 +190,7 @@ function render_question(features){
     var answer_ids = [];
     for (var a=0; a < answers.length; a++){
         answers[a]['x'] = 8;
-        answers[a]['y'] = a*100+answer_height;
+        answers[a]['y'] = a*100+ parseInt(question_panel.select('rect').attr('height')) + answer_spacing;
         answer_ids.push(answers[a].id)
     }
 
@@ -241,9 +245,10 @@ function render_question(features){
                         }
                     }
                     if (!skip){
-                        child_node[0]['x'] = parent_x.reduce(function(a,b){return a+b})/parent_x.length + 325 + Math.random();
-                        child_node[0]['y'] = parent_y.reduce(function(a,b){return a+b})/parent_x.length + Math.random();
-
+                        if (!child_node[0].hasOwnProperty('x')){
+                            child_node[0]['x'] = parent_x.reduce(function(a,b){return a+b})/parent_x.length + 325 + Math.random();
+                            child_node[0]['y'] = parent_y.reduce(function(a,b){return a+b})/parent_x.length + Math.random();
+                        }
                         done.push(child_id)
                         up_next.push(child_id)
                     }
@@ -270,14 +275,15 @@ function render_question(features){
     reply_box.append('xhtml:div')
         .classed('reply_box', true)
         .attr('id', "reply_box")
-        .html('<textarea id="text_reply"></textarea><button onclick="submit_post()">Reply</button>')
+        .html('<textarea id="text_reply" cols="60" style="float: left; font-size: 16px"></textarea>' +
+              '<button style="margin-top: 25px; margin-left: 4px;" onclick="submit_post()">Reply</button>')
 
     var bcr = document.getElementById("reply_box").getBoundingClientRect()
 
     reply_box.attr('width', bcr.width)
         .attr('height', bcr.height)
-        .attr('x', width/2 - 80)
-        .attr('y', height - 100);
+        .attr('x', 270)
+        .attr('y', height - 90);
 
 
     //// New answer button
@@ -336,6 +342,13 @@ function update_clicks(clicks){
         if ( clicks[c] ){ button_val = '-' }
         $(`#div_${c} button.upvote`).text(button_val)
     }
+}
+function update_node_position(data){
+    var node = d3.select(`#node_${data.id}`)
+    console.log(node.data()[0])
+    node.attr('transform', function(d){
+        return `translate(${data.x - d.x},${data.y - d.y})`
+    })
 }
 
 function post_html(post){
@@ -581,6 +594,9 @@ function drag_this_with_links(links, LR) {
             links.each(function(d){
                 reformat_link(this);
             });
+        })
+        .on('end', function(d) {
+            open_socket().emit('move_node', {'id': d.id, 'x': d.x + d.xt, 'y': d.y + d.yt, 'quid': question_uid()})
         })
         // .on('end', function () {
         //     equilibrate_nodes(groups, links, 500)
