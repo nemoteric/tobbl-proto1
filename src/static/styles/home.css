@@ -1,8 +1,16 @@
 .question_container {
     width: 800px;
     display: block;
-    /*margin-left: auto;*/
+    margin-left: auto;
     margin-right: auto;
+    border: solid black 1px;
+    padding: 5px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+div.content{
+    overflow: scroll;
 }
 
 
@@ -14,9 +22,28 @@
 
 .question{
     padding-bottom: 25px;
+    padding: 5px;
+    border: 1px solid black;
+    min-height: 39px;
+}
+.question .body{
+    display: block;
+    vertical-align: middle;
+    margin-top: 10px;
 }
 
-.question .body{
-    height: 100%;
-    bottom:0;
+.answer{
+    padding-top: 6px;
+}
+.answer .score{
+    display: block;
+    width: 40px;
+    float: left;
+    text-align: right;
+    padding-right: 8px;
+    /*font-weight: bold;*/
+}
+.answer .body{
+    display: block;
+    margin-left: 50px;
 }
