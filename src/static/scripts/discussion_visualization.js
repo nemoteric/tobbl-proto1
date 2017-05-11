@@ -266,7 +266,7 @@ function render_question(features){
 
 
     //// Links
-    var links = make_links(edges)
+    var links = make_links(edges, true)
 
 
     //// Reply box
@@ -299,7 +299,6 @@ function render_question(features){
     post_nodes.call(drag_this_with_links(links,false))
     // equilibrate_nodes(post_nodes, links, 500)
     send_to_back(post_panel.node())
-    // console.log(post_panel.node())
 }
 
 function send_to_back(item){
@@ -345,12 +344,11 @@ function update_clicks(clicks){
 }
 function update_node_position(data){
     var node = d3.select(`#node_${data.id}`)
-    console.log(node.data()[0])
     node.attr('transform', function(d){
         return `translate(${data.x - d.x},${data.y - d.y})`
     })
     
-    d3.selectAll('.link').each(function(){
+    d3.selectAll('.link').each(function(d){
         reformat_link(this)
     })
 }
@@ -464,34 +462,37 @@ function new_post(json){
             add_answer_button()
     }}
 
-    if (!done){
+    if (!done) {
         var targets = d3.select('.post_panel').selectAll('g'),
             target_ids = []
             ys = [],
             xsum = 0;
 
-        for (e in edges){ target_ids.push(edges[e]['target']) }
+        if (targets.size()){
+            targets = d3.select('.answer_panel').selectAll('g')
+        }
 
-        targets.each(function(d){
-            if ($.inArray(d.id, target_ids) != -1){
+        for (e in edges) {
+            target_ids.push(edges[e]['target'])
+        }
+
+        targets.each(function (d) {
+            if ($.inArray(d.id, target_ids) != -1) {
                 ys.push(parseInt(d.y));
                 xsum += d.x;
             }
         })
 
-        post['x'] = xsum/ys.length;
+        post['x'] = xsum / ys.length;
         post['y'] = Math.max.apply(Math, ys) + 150;
 
 
         var node = make_nodes(d3.select('.post_panel'), [post], false, 'post_node', false);
-
+        var links = make_links(edges)
+        node.call(drag_this_with_links(d3.selectAll('.link'), false))
     }
 
-    make_links(edges)
-
-
-    d3.select('.post_panel').call(drag_with_links(d3.select('.post_panel').selectAll('g'), d3.selectAll('.link'), true));
-    equilibrate_nodes(d3.select('.post_panel').selectAll('g'), d3.selectAll('.link'), 200)
+    d3.select('.post_panel').call(drag_with_links(d3.select('.post_panel').selectAll('g'), d3.selectAll('.link'), false));
 }
 
 function drag_with_links(groups, links, LR, UD) {
@@ -1033,7 +1034,7 @@ function make_nodes(panel, data, fixed, classed, center){
 
     return nodes
 }
-function make_links(edges){
+function make_links(edges, stb){
     var links = d3.select('.main').selectAll('.edge')
         .data(edges).enter().append('g')
         .attr('source', function(d){ return d.source})
@@ -1088,9 +1089,10 @@ function make_links(edges){
             }})})
 
             reformat_link(this);
-
+            if (stb) {
+                send_to_back(this);
+            }
             // send link to back
-            send_to_back(this);
         });
 
     // define arrow tip
