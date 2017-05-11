@@ -20,7 +20,7 @@ def render_thread(thread_id):
 def new_post(json):
     post = thread_utils.new_post(json)
     if post:
-        emit('new_post', post, room='question_%i' % json['question_id'])
+        emit('new_post', post, room='question_%i' % json['question_uid'])
 
 
 @socketio.on('upvote', namespace='/_thread')
@@ -32,8 +32,8 @@ def upvote(json):
 
 @socketio.on('render_question', namespace='/_thread')
 def render_thread(json):
-    question, clicks = thread_utils.get_question(json['question_id'])
-    join_room('question_%i' % json['question_id'])
+    features, clicks = thread_utils.tobbl(json)
+    join_room('question_%i' % json['question_uid'])
     emit('rooms', ','.join(rooms()))
-    emit('render_question', [question, clicks])
+    emit('render_question', [features, clicks])
 

@@ -8,29 +8,40 @@ import numpy as np
 import copy
 
 
-def get_question(question_id):
-    results = list(
-        session.run("MATCH (Q:Question {uid: {uid}}), (U:User {username: {username}}) "
-                    "WITH Q,U "
-                    "OPTIONAL MATCH (Q)<-[pR:ANSWER|CHALLENGE|SUPPORT*]-(P:Post) "
-                    "WITH Q,U,pR,P "
-                    "OPTIONAL MATCH (P)<-[uR:INTERACT]-(U) " +
-                    "RETURN Q,pR,P,uR ",
-                    {'uid': int(question_id),
-                     'username': current_user.username}))
+def tobbl(element):
+    features = {}
+    if element['type']=='question':
+        results = list(
+            session.run("MATCH (Q:Question), (U:User {username: {username}}) "
+                        "WHERE Q.uid={quid} "
+                        "WITH Q,U "
+                        "OPTIONAL MATCH (Q)<-[pR:ANSWER|CHALLENGE|SUPPORT*]-(P:Post) "
+                        "WITH Q,U,pR,P "
+                        "OPTIONAL MATCH (P)<-[uR:INTERACT]-(U) "
+                        "RETURN pR,P,uR,Q ",
+                        {'quid': element['question_uid'],
+                         'username': current_user.username}))
+        features['head'] = {'type': 'question',
+                           'node': {'id': results[0][3].id, 'type': 'Question', **results[0][3].properties}}
+        features['answerable'] = True; ## should be an attribute on node
+    if element['type']=='relationship':
+        results = list(
+            session.run("MATCH (Q:Question), (U:User {username: {username}}) "
+                        "WHERE Q.uid={quid} "
+                        "WITH Q,U "
+                        "OPTIONAL MATCH (Q)<-[pR:ANSWER|CHALLENGE|SUPPORT*]-(P:Post) "
+                        "WITH Q,U,pR,P "
+                        "OPTIONAL MATCH (P)<-[uR:INTERACT]-(U) "
+                        "RETURN pR,P,uR,Q ",
+                        {'quid': element['question_uid'],
+                         'username': current_user.username}))
+        features['head'] = {'type': 'question',
+                           'node': {'id': results[0][3].id, **results[0][3].properties}}
+        features['answerable'] = True; ## should be an attribute on node
 
-    clicks = {}
-    for res in results:
-        try:
-            clicks[res[3].end] = res[3].properties['click']>0
-        except:
-            pass
 
-
-    raw = [[item[i] for i in range(len(item)-1)] for item in results]
-
-    nodes = [{**node.properties, **{'id': node.id, 'type': list(node.labels)[0]}}
-             for node in [raw[0][0]]+[r[2] for r in raw] if node is not None]
+    nodes = [{**node.properties, 'id': node.id, 'type': list(node.labels)[0]}
+             for node in [r[1] for r in results] if node is not None]
 
     node_ids = []
     n=0
@@ -41,8 +52,12 @@ def get_question(question_id):
             node_ids.append(nodes[n]['id'])
             n += 1
 
+    features['nodes'] = nodes
+
     edges = [{'source': edge.start, 'target': edge.end, 'type': edge.type}
-             for edge in [r[1][-1] for r in raw if r[1] is not None]]
+             for edge in [r[0][-1] for r in results if r[0] is not None]]
+    features['edges'] = edges
+
 
     ## Find nodes that should appear when an answer is selected
     def get_relevant(node, relevant):
@@ -57,9 +72,16 @@ def get_question(question_id):
             if ('answering' not in nodes[n]) and (nodes[n]['id'] not in relevant):
                 relevant = get_relevant(n,relevant)
         return relevant
+    features['relevant'] = dict([(nodes[n]['id'], get_relevant(n,[])) for n in range(len(nodes)) if 'answering' in nodes[n].keys()])
 
-    relevant_to_answers = dict([(nodes[n]['id'], get_relevant(n,[])) for n in range(len(nodes)) if 'answering' in nodes[n].keys()])
-    return {'nodes': nodes, 'edges': edges, 'relevant': relevant_to_answers}, clicks
+    clicks = {}
+    for res in results:
+        try:
+            clicks[res[2].end] = res[2].properties['click']>0
+        except:
+            pass
+
+    return features, clicks
 
 
 def new_question(question):
@@ -82,22 +104,23 @@ def new_post(json): # Should be able to do this in one query, but doing it for e
     refs = re.findall('([~\^!]*@[0-9]+)', json['body'])
     supporting = [int(ref[2:]) for ref in refs if re.match('\^', ref)]
     challenging = [int(ref[2:]) for ref in refs if re.match('!', ref)]
-    answering = [int(ref[2:]) for ref in refs if re.match('~', ref)]
+    # answering = [int(ref[2:]) for ref in refs if re.match('~', ref)]
     replying = []#[int(ref[1:]) for ref in refs if re.match('@', ref)]
 
     json['body'] = re.sub('([~\^!]*@[0-9]+)', '', json['body']).strip()
 
-    if len(answering) & (len(supporting) | len(challenging)):
+
+    if json['answering'] & (len(supporting) | len(challenging)):
         flash("Can't support or object and also answer")
         return
 
-    elif len(answering) == 1:
+    elif json['answering']:
         results = list(
             session.run( "MATCH (u:User {username: {username}}), (Q:Question) " +
-                         "WHERE ID(Q) in {answering} " +
+                         "WHERE Q.uid in {answering} " +
                          "CREATE (A:Post { props })<-[:AUTHOR]-(u), (Q)<-[rA:ANSWER]-(A) " +
                          "SET A.score = 0 " +
-                         "RETURN A, rA", {'answering': answering,
+                         "RETURN A, rA", {'answering': json['question_uid'],
                                       'username': current_user.username,
                                       'props': {'body': json['body'],
                                                 'uid': get_uid('Post'),
@@ -195,7 +218,9 @@ def upvote(post_id):
         dscore = rel['click'] + rel['sup'] - rel['chal'] - rel['score']
         rel['score'] += dscore
         if rel['score'] < 0:
-            dscore -= rel['score']
+            dscore = min(0,dscore-rel['score'])
+        if (rel['score'] > 0) & (dscore > rel['score']):
+            dscore = rel['score']
 
         if id in rels:
             for r in [r for r in rels[id] if r[1]!='ANSWER']:

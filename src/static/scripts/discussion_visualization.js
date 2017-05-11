@@ -3,14 +3,17 @@
  */
 
 // declarations
-var max_width = 300
+var max_width = 300,
+    answer_height = 110,
+    answer_spacing = 30;
 
 function open_socket() {
     var namespace = '/_thread';
     var socket = io.connect('http://' + document.domain + ':' + location.port + namespace);
     return socket
 }
-function question_id() { return parseInt(window.location.href.split('/')[4]) }
+
+function question_uid() { return parseInt(window.location.href.split('/')[4]) }
 
 function document_ready(){
     var socket = open_socket();
@@ -20,21 +23,19 @@ function document_ready(){
         update_clicks(data[1]);
     });
     socket.on('connect', function() {
-        socket.emit(window.location.href);
-        
+
     });
     socket.on('new_post', function(json){ new_post(json) });
     socket.on('update_scores', function(scores){
         update_scores(scores)
     })
     socket.on('update_clicks', function(clicks){
-        console.log(clicks)
         update_clicks(clicks)
     })
     socket.on('rooms', function(rooms){
     })
 
-    socket.emit('render_question', {'question_id': question_id()});
+    socket.emit('render_question', {'question_uid': question_uid(), 'type': 'question'});
 }
 
 var drag_this = d3.drag().subject(this)
@@ -69,6 +70,258 @@ var drag_LR = d3.drag().subject(this)
             d.xt = d3.event.x - d.x1;
         });
 
+// d3.selection.prototype.moveToBack = function() {
+//         return this.each(function() {
+//             var firstChild = this.parentNode.firstChild;
+//             if (firstChild) {
+//                 this.parentNode.insertBefore(this, firstChild);
+//             }
+//         });
+//     };
+
+
+function render_question(features){
+    var nodes = features.nodes,
+        edges = features.edges.filter(function(edge){ return edge.type!='ANSWER' }),
+        head = features.head,
+        relevant = features.relevant,
+        svg = d3.select("svg"),
+        width = parseInt(svg.style('width').match(/\d+/)[0]),
+        height = parseInt(svg.style('height').match(/\d+/)[0]);
+
+    // colors
+    var question_color = '#455B49',
+        post_color = '#F1F5F5',
+        answer_color = '#ADC698'
+
+    for (e in edges){
+        edges[e]['xp'] = 0
+        edges[e]['yp'] = 0
+    }
+    for (n in nodes){nodes[n].xt = 0; nodes[n].yt = 0}
+
+
+    //// make panels
+    var main = svg.selectAll('.main')
+        .data([{'data':0}]).enter().append('g')
+        .classed('main', true)
+        // .call(drag_this)
+        ;
+
+    var post_panel = main.selectAll('.post_panel')
+        .data([{'data':0}]).enter().append('g')
+        .classed('post_panel', true)
+        // .call(drag_LR)
+        ;
+
+    post_panel
+        .append('rect')
+        .attr('y', -1000)
+        .attr('x', -500)
+        .attr('width',3000)
+        .attr('height', 3000)
+        .style('fill', post_color);
+
+    var answer_panel = main.selectAll('.answer_panel')
+        .data([{'data':0}]).enter().append('g')
+        .classed('answer_panel', true);
+
+    answer_panel
+        .append('rect')
+        .attr('x', 1)
+        .attr('y', -2000)
+        .attr('width', 268)
+        .attr('height', 6000)
+        .style('fill', answer_color)
+        .style('stroke', question_color)
+        .style('stroke-width', 3);
+
+    var answer_footer =  main.selectAll('.answer_footer')
+        .data([{'data':0}]).enter().append('g')
+        .classed('answer_footer', true)
+        .append('rect')
+        .attr('width',268)
+        .attr('height', 100)
+        .attr('x', 1)
+        .attr('y', height - 100 )
+        .style('fill', question_color);;
+
+    var question_panel = main.selectAll('.question_panel')
+        .data([{'data':0}]).enter().append('g')
+        .classed('question_panel', true);
+
+    question_panel
+        .append('rect')
+        .attr('width',width)
+        .attr('height', 100)
+        // .attr('stroke', '#808D8D')
+        // .attr('stroke-width', 1)
+        .style('fill', question_color);
+
+
+    //// Question
+    if (head['type'] == 'question'){
+        head['node']['x'] = width/2;
+        head['node']['y'] = 10;
+        var question_node = make_nodes(question_panel, [head['node']], true, 'question_node', true)
+        question_node.attr('transform', `translate(0,${50 - parseInt(question_node.attr('height'))/2})`)
+    }
+
+
+    //// separate nodes by type
+    var answers = [];
+    var posts = [];
+    for (n in nodes){
+        if (nodes[n]['answering']){answers.push(nodes[n])}
+        else {posts.push(nodes[n])}
+    }
+
+
+    //// Answers
+    answers = answers.sort(function(a,b){
+        if (a['score'] > b['score']){return -1}
+        else {return 1}
+    });
+
+    var answer_ids = [];
+    for (var a=0; a < answers.length; a++){
+        answers[a]['x'] = 8;
+        answers[a]['y'] = a*100+answer_height;
+        answer_ids.push(answers[a].id)
+    }
+
+    var answer_nodes = make_nodes(answer_panel, answers, true, 'answer_node', false)
+
+    // move answer closer to one another
+    var at = 0
+    for (var a=0; a < answers.length; a++){
+        var node = d3.select(`#node_${answers[a].id}`),
+            box = d3.select(`#node_${answers[a].id} rect`)
+        if (a>0){
+            var top = d3.select(`#node_${answers[a-1].id} rect`)
+            node.attr('transform', function(d){
+                iat = at
+                d.yt = parseInt(top.attr('y')) + parseInt(top.attr('height')) - parseInt(box.attr('y')) + answer_spacing
+                at += d.yt
+                d.yt += iat
+                d.y += d.yt
+                d.height = parseInt(box.attr('height'))
+            return `translate(0,${d.yt})`})
+        }
+        node.data()[0].yt = 0
+        node.data()[0].height = parseInt(box.attr('height'))
+    }
+
+
+    //// Posts (inherit coords from parents)
+    function inherit_position(parent_ids, done, nodes, edges){
+        var up_next = [];
+        for (var p=0; p<parent_ids.length; p++){
+            // find edges connected to children
+            var child_edges = [];
+            for (var e=0; e<edges.length; e++){if (edges[e]['target'] == parent_ids[p]){child_edges.push(edges[e])}}
+            // for each child
+            var child_nodes = [];
+            for (var c=0; c<child_edges.length; c++){
+                var child_id = child_edges[c]['source'];
+                // if it's the first time dealing with this child
+                if ($.inArray(child_id, done)==-1){
+                    var child_node = nodes.filter(function (obj) {return obj.id == child_id});
+
+                    // get coordinates of parent nodes
+                    var parent_x = [];
+                    var parent_y = [];
+                    var skip=false;
+                    for (var e=0; e<edges.length; e++){
+                        if (edges[e]['source']==child_id) {
+                            var parent = nodes.filter(function (obj) {return obj.id == edges[e].target});
+                            if (!parent[0]['x']){ skip = true }
+                            parent_x.push(parent[0]['x']);
+                            parent_y.push(parent[0]['y']);
+                        }
+                    }
+                    if (!skip){
+                        child_node[0]['x'] = parent_x.reduce(function(a,b){return a+b})/parent_x.length + 325 + Math.random();
+                        child_node[0]['y'] = parent_y.reduce(function(a,b){return a+b})/parent_x.length + Math.random();
+
+                        done.push(child_id)
+                        up_next.push(child_id)
+                    }
+                }
+            }
+        }
+        if (up_next.length > 0){
+            done = inherit_position(up_next, done, nodes, edges);
+        }
+        return done
+    }
+    inherit_position(answer_ids, [], nodes, edges);
+
+    var post_nodes = make_nodes(post_panel, posts, false, 'post_node', false)
+
+
+    //// Links
+    var links = make_links(edges)
+
+
+    //// Reply box
+    var reply_box = main.append('foreignObject');
+
+    reply_box.append('xhtml:div')
+        .classed('reply_box', true)
+        .attr('id', "reply_box")
+        .html('<textarea id="text_reply"></textarea><button onclick="submit_post()">Reply</button>')
+
+    var bcr = document.getElementById("reply_box").getBoundingClientRect()
+
+    reply_box.attr('width', bcr.width)
+        .attr('height', bcr.height)
+        .attr('x', width/2 - 80)
+        .attr('y', height - 100);
+
+
+    //// New answer button
+    if (features.answerable){
+        add_answer_button(height)
+    }
+
+
+    //// Final touches
+    // var all_postpanel_nodes = post_panel.selectAll('g');
+    post_panel.call(drag_with_links(post_nodes, links, false, false));
+    answer_panel.call(drag_with_links(answer_nodes, links, false, true));
+    post_nodes.call(drag_this_with_links(links,false))
+    // equilibrate_nodes(post_nodes, links, 500)
+    send_to_back(post_panel.node())
+    // console.log(post_panel.node())
+}
+
+function send_to_back(item){
+    var firstChild = item.parentNode.firstChild;
+    if (firstChild) {
+        item.parentNode.insertBefore(item, firstChild);
+    }
+}
+function resize_borders(groups) {
+    // SELECT ALL CHILD NODES EXCEPT THE BOUNDING RECT
+    var borders = groups.selectAll('.border_rect');
+    var childs = groups.selectAll(':not(.border_rect)');
+
+
+    borders.attr('width', function () {
+        var parent = d3.select(this.parentNode);
+        // var siblings = parent.not(this)
+        // var childs = parent.selectAll(':not(.border_rect)');
+        // console.log(parent.filter(function(d){return d.classed()}));
+        // console.log(d3.max(parent, function(d){return d.getBBox().width}));
+        return 50
+    });
+    var width = childs.node().getBBox().width;
+
+
+    //
+}
+
 function upvote(post_id){
     open_socket().emit('upvote', post_id)
 }
@@ -81,7 +334,6 @@ function update_clicks(clicks){
     for (var c in clicks){
         var button_val = '+'
         if ( clicks[c] ){ button_val = '-' }
-        console.log(c, clicks[c])
         $(`#div_${c} button.upvote`).text(button_val)
     }
 }
@@ -90,7 +342,6 @@ function post_html(post){
     var post_time = new Date(0);
     post_time.setUTCSeconds(post['time']);
     var current_time = new Date();
-    // console.log(current_time);
 
     var time = "%H%:%M% %m%/%d%/%y%";
     var elems = {'%H%': post_time.getHours(), '%M%': post_time.getMinutes(),// '%s%': post_time.getSeconds(),
@@ -105,15 +356,15 @@ function post_html(post){
                 `      <div class="author">${post['author']}:</div>` +
                 `      <div class="post_text">${post['body']}</div>` +
                 `   </div>` +
-                `   <div class="post_footer">`+
-                `      <div class="left_footer">` +
-                `         <button class="upvote" onclick="upvote(${post['id']})">+</button>` +
-                `         <t id="score" class="post_score">${post['score']}</t>` +
-                `      </div>` +
-                `      <div class="right_footer">` +
-                `         <a onclick="reply(${post['id']}, 0)">Answer</a>` +
-                `      </div>` +
-                `   </div>` +
+                // `   <div class="post_footer">`+
+                // `      <div class="left_footer">` +
+                // `         <button class="upvote" onclick="upvote(${post['id']})">+</button>` +
+                // `         <t id="score" class="post_score">${post['score']}</t>` +
+                // `      </div>` +
+                // `      <div class="right_footer">` +
+                // `         <a onclick="reply(${post['id']}, 0)">Answer</a>` +
+                // `      </div>` +
+                // `   </div>` +
                 `</div>`
     }else{
         return `<div class="post" id="${post['id']}">` +
@@ -134,16 +385,25 @@ function post_html(post){
                 `</div>`
     }
 }
-
-function submit_post(){
-    var textbox = $(`div#reply_box > textarea`);
-    open_socket().emit('new_post', {
-        'body': textbox.val(),
-        'question_id': question_id()
-    });
-    textbox.val('');
+function submit_post(answer){
+    if (answer){
+        var textbox = $(`.answer_box  textarea`);
+        open_socket().emit('new_post', {
+            'body': textbox.val(),
+            'answering': true,
+            'question_uid': question_uid()
+        });
+        add_answer_button()
+    }else{
+        var textbox = $(`div#reply_box > textarea`);
+        open_socket().emit('new_post', {
+            'body': textbox.val(),
+            'answering': false,
+            'question_uid': question_uid()
+        });
+        textbox.val('');
+    }
 }
-
 function reply(post_id, mode){
     var textbox = $(`div#reply_box > textarea`);
 
@@ -158,32 +418,33 @@ function reply(post_id, mode){
     }
     textbox.focus();
 }
-
 function new_post(json){
     // NOTE: This function is suboptimal
     var post = json['node'],
         edges = json['edges'],
         done = false;
 
-    console.log(json);
-
     if (post.hasOwnProperty('answering')){
         if (post['answering']){
             // find right-most answer
-            var answers = d3.select('.post_panel').selectAll('.answer_node'),
+            var answers = d3.selectAll('.answer_node'),
                 num = 0,
-                y = 0;
+                x = 8,
+                y = answer_height;
 
             answers.each(function(d){
-                y = d.y;
+                y = Math.max(y,d.y + d.height + d.yt)
                 num += 1
             })
 
-            post['x'] = num*max_width + max_width/2;
-            post['y'] = y;
+            post['x'] = x;
+            post['y'] = y + answer_spacing;
 
-            var node = make_nodes(d3.select('.post_panel'), [post], true, 'answer_node', false);
+            var node = make_nodes(d3.select('.answer_panel'), [post], true, 'answer_node', false);
             done = true;
+            edges = [];
+
+            add_answer_button()
     }}
 
     if (!done){
@@ -202,7 +463,7 @@ function new_post(json){
         })
 
         post['x'] = xsum/ys.length;
-        post['y'] = Math.max.apply(Math, ys);
+        post['y'] = Math.max.apply(Math, ys) + 150;
 
 
         var node = make_nodes(d3.select('.post_panel'), [post], false, 'post_node', false);
@@ -213,10 +474,10 @@ function new_post(json){
 
 
     d3.select('.post_panel').call(drag_with_links(d3.select('.post_panel').selectAll('g'), d3.selectAll('.link'), true));
-    equilibrate_nodes(d3.select('.post_panel').selectAll('g'), d3.selectAll('.link'), 2000)
+    equilibrate_nodes(d3.select('.post_panel').selectAll('g'), d3.selectAll('.link'), 200)
 }
 
-function drag_with_links(groups, links, LR) {
+function drag_with_links(groups, links, LR, UD) {
     return d3.drag().subject(this)
         .on('start', function (d) {
             if (d.xt){
@@ -234,15 +495,24 @@ function drag_with_links(groups, links, LR) {
             if (LR) {
                 d3.select(this)
                     .attr("transform", "translate(" + (d3.event.x - d.x1) + ",0)");
+            }else if (UD){
+                d3.select(this)
+                    .attr("transform", "translate(0," + (d3.event.y - d.y1) + ")");
             }else{
                 d3.select(this)
                     .attr("transform", "translate(" + (d3.event.x - d.x1) + "," + (d3.event.y - d.y1) + ")");
             }
 
+            var xp = d.xt,
+                yp = d.yt
+
+
             groups.each(function(d) {
                 d3.selectAll('[source="' + d.id + '"]')
                     .each(function (d) {
-                        d.x1 = d.x1 + d3.event.dx;
+                        if(!UD){
+                            d.x1 = d.x1 + d3.event.dx;
+                        }
                         if(!LR) {
                             d.y1 = d.y1 + d3.event.dy;
                         }
@@ -250,9 +520,13 @@ function drag_with_links(groups, links, LR) {
 
                 d3.selectAll('[target="' + d.id + '"]')
                     .each(function (d) {
-                        d.x2 = d.x2 + d3.event.dx;
+                        if(!UD){
+                            d.x2 = d.x2 + d3.event.dx;
+                            d.xp = xp
+                        }
                         if(!LR){
                              d.y2 = d.y2 + d3.event.dy;
+                             d.yp = yp
                         }
                     });
             });
@@ -266,7 +540,6 @@ function drag_with_links(groups, links, LR) {
         // })
         ;
 }
-
 function drag_this_with_links(links, LR) {
     return d3.drag().subject(this)
         .on('start', function (d) {
@@ -313,13 +586,6 @@ function drag_this_with_links(links, LR) {
         //     equilibrate_nodes(groups, links, 500)
         // })
         ;
-}
-
-function send_to_back(item){
-    var firstChild = item.parentNode.firstChild;
-    if (firstChild) {
-        item.parentNode.insertBefore(item.parentNode, firstChild);
-    }
 }
 
 function equilibrate_nodes(groups, links, time){
@@ -460,33 +726,21 @@ function equilibrate_nodes(groups, links, time){
         if(elapsed > time) {t.stop()}
     }, 5);
 }
-
-function resize_borders(groups) {
-    // SELECT ALL CHILD NODES EXCEPT THE BOUNDING RECT
-    // console.log(group)
-    var borders = groups.selectAll('.border_rect');
-    var childs = groups.selectAll(':not(.border_rect)');
-
-
-    borders.attr('width', function () {
-        var parent = d3.select(this.parentNode);
-        // var siblings = parent.not(this)
-        // var childs = parent.selectAll(':not(.border_rect)');
-        // console.log(parent.filter(function(d){return d.classed()}));
-        // console.log(d3.max(parent, function(d){return d.getBBox().width}));
-        return 50
-    });
-    var width = childs.node().getBBox().width;
-
-
-    //
-}
-
 function reformat_link(this_link){
     //Reposition endpoints
     d3.select(this_link).select('line')
         .attr('x1', function(d){
-            if (d.x2-d.x1>0){var ang = Math.atan((d.y2-d.y1)/(d.x2-d.x1))}else{var ang = Math.atan((d.y2-d.y1)/(d.x2-d.x1)) - 3.14}
+            var target = d3.select('[id=node_' + d.target + ']'),
+                target_data = target.data()[0];
+
+            if (target.data()[0].answering){
+                var x2 = target_data.x + target_data.width/2 + d.xp,
+                    y2 = target_data.y + target_data.height/2 + d.yp;
+                if (d.x2-d.x1>0){var ang = Math.atan((y2-d.y1)/(x2-d.x1))}else{var ang = Math.atan((y2-d.y1)/(x2-d.x1)) - 3.14}
+                // console.log(9,d.x1)
+            }else{
+                if (d.x2-d.x1>0){var ang = Math.atan((d.y2-d.y1)/(d.x2-d.x1))}else{var ang = Math.atan((d.y2-d.y1)/(d.x2-d.x1)) - 3.14}
+            }
             var source = d3.select('[id=node_' + d.source + ']'),
                 x1 = source.data()[0].width/2 * (d.x2-d.x1)/Math.abs(d.x2-d.x1),
                 y1 = x1 * Math.tan(ang),
@@ -497,7 +751,17 @@ function reformat_link(this_link){
             if (h1<h2){return d.x1 + x1}else{return d.x1 + x2}
         })
         .attr('y1', function(d){
-            if (d.x2-d.x1>0){var ang = Math.atan((d.y2-d.y1)/(d.x2-d.x1))}else{var ang = Math.atan((d.y2-d.y1)/(d.x2-d.x1)) - 3.14}
+            var target = d3.select('[id=node_' + d.target + ']'),
+                target_data = target.data()[0];
+
+            if (target_data.answering){
+                var x2 = target_data.x + target_data.width/2 + d.xp,
+                    y2 = target_data.y + target_data.height/2 + d.yp;
+
+                if (d.x2-d.x1>0){var ang = Math.atan((y2-d.y1)/(x2-d.x1))}else{var ang = Math.atan((y2-d.y1)/(x2-d.x1)) - 3.14}
+            }else{
+                if (d.x2-d.x1>0){var ang = Math.atan((d.y2-d.y1)/(d.x2-d.x1))}else{var ang = Math.atan((d.y2-d.y1)/(d.x2-d.x1)) - 3.14}
+            }
             var source = d3.select('[id=node_' + d.source + ']'),
                 x1 = source.data()[0].width/2 * (d.x2-d.x1)/Math.abs(d.x2-d.x1),
                 y1 = x1 * Math.tan(ang),
@@ -508,9 +772,15 @@ function reformat_link(this_link){
             if (h1<h2){return d.y1 + y1}else{return d.y1 + y2}
         })
         .attr('x2', function(d){
-            if (d.x2-d.x1>0){var ang = Math.atan((d.y2-d.y1)/(d.x2-d.x1))}else{var ang = Math.atan((d.y2-d.y1)/(d.x2-d.x1)) - 3.14}
             var target = d3.select('[id=node_' + d.target + ']'),
-                x1 = target.data()[0].width/2 * (d.x2-d.x1)/Math.abs(d.x2-d.x1),
+                target_data = target.data()[0];
+
+            if (target.data()[0].answering){
+                return target_data.x + d.xp + target_data.width - 5
+            }
+
+            if (d.x2-d.x1>0){var ang = Math.atan((d.y2-d.y1)/(d.x2-d.x1))}else{var ang = Math.atan((d.y2-d.y1)/(d.x2-d.x1)) - 3.14}
+            var x1 = target.data()[0].width/2 * (d.x2-d.x1)/Math.abs(d.x2-d.x1),
                 y1 = x1 * Math.tan(ang),
                 h1 = Math.sqrt(x1**2 + y1**2),
                 y2 = target.data()[0].height/2 * (d.y2-d.y1)/Math.abs(d.y2-d.y1) + 5,
@@ -519,9 +789,15 @@ function reformat_link(this_link){
             if (h1<h2){return d.x2 - x1}else{return d.x2 - x2}
         })
         .attr('y2', function(d){
-            if (d.x2-d.x1>0){var ang = Math.atan((d.y2-d.y1)/(d.x2-d.x1))}else{var ang = Math.atan((d.y2-d.y1)/(d.x2-d.x1)) - 3.14}
             var target = d3.select('[id=node_' + d.target + ']'),
-                x1 = target.data()[0].width/2 * (d.x2-d.x1)/Math.abs(d.x2-d.x1),
+                target_data = target.data()[0];
+
+            if (target.data()[0].answering){
+                return target.data()[0].y + d.yp + target.data()[0].height/2
+            }
+
+            if (d.x2-d.x1>0){var ang = Math.atan((d.y2-d.y1)/(d.x2-d.x1))}else{var ang = Math.atan((d.y2-d.y1)/(d.x2-d.x1)) - 3.14}
+            var x1 = target.data()[0].width/2 * (d.x2-d.x1)/Math.abs(d.x2-d.x1),
                 y1 = x1 * Math.tan(ang),
                 h1 = Math.sqrt(x1**2 + y1**2),
                 y2 = target.data()[0].height/2 * (d.y2-d.y1)/Math.abs(d.y2-d.y1) + 5,
@@ -625,9 +901,6 @@ function starting_positions(nodes, edges, width, height){
     //     completed.push(nodes_of_interest[n])
     // }
 
-    console.log([1,2].filter(function(x){return $.inArray(x,[1,2,3]) != -1}));
-    console.log(nodes_of_interest);
-
 
 
 
@@ -682,8 +955,13 @@ function make_panels(svg, width, height){
 
     return [post, answer, question]
 }
-
 function make_nodes(panel, data, fixed, classed, center){
+    var colors = {
+        'post_node': '#9AD1D4',
+        'answer_node': '#9AD1D4',
+        'question_node': '#F1F5F5'
+    }
+
     var nodes = panel.selectAll('.node')
         .data(data).enter().append('g')
         .attr('id', function(d){ return 'node_' + d.id})
@@ -692,11 +970,11 @@ function make_nodes(panel, data, fixed, classed, center){
 
     var boxes = nodes.append('rect').classed('border_rect', true)
         .attr('width', 5).attr('height', 5)
-        .style('fill', 'white')
+        .style('fill', colors[classed])
         .style('stroke', 'black')
         .attr('x', function(d){ return d.x})
         .attr('y', function(d){ return d.y})
-        .attr("rx", 5).attr("ry", 5);
+        .attr("rx", 8).attr("ry", 8);
 
     var html = nodes.append('foreignObject')
         .attr('x', function(d){ return d.x })
@@ -729,11 +1007,12 @@ function make_nodes(panel, data, fixed, classed, center){
     nodes.each(function(d){
         d.height = this.getBBox().height
         d.width = this.getBBox().width
+        d.xt = 0
+        d.yt = 0
     })
 
     return nodes
 }
-
 function make_links(edges){
     var links = d3.select('.main').selectAll('.edge')
         .data(edges).enter().append('g')
@@ -750,29 +1029,48 @@ function make_links(edges){
             d.y2 = target.data()[0].y + target.data()[0].height/2 + 1;
 
             if (d.type == "CHALLENGE"){
-                d3.select(this).append('line')
+                line = d3.select(this).append('line')
                     .attr("marker-end", "url(#arrow)")
                     // .style('stroke','black').style('stroke-width',function(d){return d.width});
                     .style('stroke','black')
                     .style('stroke-width',function(d){return 2})
                     .style("stroke-dasharray", ("3, 3"));
             }else {
-                d3.select(this).append('line')
+                line = d3.select(this).append('line')
                     .attr("marker-end", "url(#arrow)")
                     // .style('stroke','black').style('stroke-width',function(d){return d.width});
                     .style('stroke', 'black')
                     .style('stroke-width', function (d) {return 2})
             }
 
-            // d3.select(this).append('text')
-            //     .text(function(d){ return d.type })
-            //     .attr('text-anchor','middle')
-            //     .classed('link-label', true);
+            d3.select(this).append('text')
+                .text(function(d){ return d.type })
+                .attr('text-anchor','middle')
+                .attr('opacity',0)
+                .classed('link-label', true)
+                .on('click', function(d){
+                    open_socket().emit('tobbl', d.id)
+                });
+
+            d3.select(this)
+                .on('mouseover', function(){
+                    // console.log(d3.select(this).select('.link-label'))
+                    d3.select(this).select('text')
+                        .attr('opacity',1)
+                })
+                .on('mouseout', function(){
+                    var link = d3.select(this).select('.link-label'),
+                        t = d3.timer(function(elapsed){
+                            link.attr('opacity',parseFloat(link.attr('opacity'))*0.85)
+                        if(elapsed > 400) {
+                            link.attr('opacity',0)
+                            t.stop()
+            }})})
 
             reformat_link(this);
 
             // send link to back
-            // send_to_back(this);
+            send_to_back(this);
         });
 
     // define arrow tip
@@ -792,146 +1090,200 @@ function make_links(edges){
     return links
 }
 
-function render_question(features){
-    var nodes = features.nodes,
-        edges = features.edges.filter(function(edge){ return edge.type!='ANSWER' }),
-        relevant = features.relevant,
-        svg = d3.select("svg"),
-        width = parseInt(svg.style('width').match(/\d+/)[0]),
-        height = parseInt(svg.style('height').match(/\d+/)[0]);
+function add_answer_button(){
+    var height = parseInt(d3.select('svg').style('height').match(/\d+/)[0])
+    d3.select('.answer_button').remove()
 
+    // var y = 0;
+    // d3.selectAll('.answer_node').each(function(d){
+    //     y = Math.max(y,d.y + d.height + d.yt)
+    // })
 
-    //// make panels
-    var main = svg.selectAll('.main')
-        .data([{'data':0}]).enter().append('g')
-        .classed('main', true)
-        // .call(drag_this)
-        ;
+    var answer_button = d3.select('.answer_footer')
+        .append('g')
+        .classed('answer_button', true);
 
-    var post_panel = main.selectAll('.post_panel')
-        .data([{'data':0}]).enter().append('g')
-        .classed('post_panel', true)
-        // .call(drag_LR)
-        ;
-
-    post_panel
+    answer_button
         .append('rect')
-        .attr('y', 100)
-        .attr('width',width)
-        .attr('height', height-100)
-        .style('fill', 'transparent');
+        .attr('width', 100)
+        .attr('height', 30)
+        .style('fill', 'white')
+        .style('stroke', 'black')
+        .attr('x', 82)
+        .attr('y', height - 83)
 
-    var question_panel = main.selectAll('.question_panel')
-        .data([{'data':0}]).enter().append('g')
-        .classed('question_panel', true);
+    answer_button
+        .append('text')
+        .attr('x', 92)
+        .attr('y', height - 63)
+        .text('New answer');
 
-    question_panel
-        .append('rect')
-        .attr('width',width)
-        .attr('height', 100)
-        .style('fill', 'transparent');
+    answer_button
+        .on('click', function(){
+            var button =  d3.select(this);
+
+            d3.select(this).html('');
+
+            var answer_box = button.append('foreignObject');
+
+            answer_box.append('xhtml:div')
+                .classed('answer_box', true)
+                .attr('id', "answer_box")
+                .html('<textarea cols="40" id="text_answer"></textarea>' +
+                      '<button onclick="submit_post(true)">Submit</button>' +
+                      '<button onclick="add_answer_button()">Cancel</button>')
+
+            var bcr = document.getElementById("answer_box").getBoundingClientRect()
+
+            answer_box.attr('width', 250)
+                .attr('height', bcr.height)
+                .attr('x', 5)
+                .attr('y', height-85);
+
+            button.on('click', function(){})
+        })
+}
 
 
-    //// separate nodes by type
-    var answers = [];
-    var posts = [];
-    for (n in nodes){
-        if (nodes[n]['type']=='Question'){var question = nodes[n]}
-        else if (nodes[n]['answering']){answers.push(nodes[n])}
-        else {posts.push(nodes[n])}
-    }
 
 
-    //// Question
-    question['x'] = width/2;
-    question['y'] = 10;
-
-    var question_node = make_nodes(question_panel, [question], true, 'question_node', true)
 
 
-    //// Answers
-    answers.sort(function(a,b){
-        if (a['score'] > b['score']){return -1}
-        else {return 0}
+
+
+
+
+d3.button = function() {
+
+  var dispatch = d3.dispatch('press', 'release');
+
+  var padding = 10,
+      radius = 10,
+      stdDeviation = 5,
+      offsetX = 2,
+      offsetY = 4;
+
+  function my(selection) {
+    selection.each(function(d, i) {
+      var g = d3.select(this)
+          .attr('id', 'd3-button' + i)
+          .attr('transform', 'translate(' + d.x + ',' + d.y + ')');
+
+      var text = g.append('text').text(d.label);
+      var defs = g.append('defs');
+      var bbox = text.node().getBBox();
+      var rect = g.insert('rect', 'text')
+          .attr("x", bbox.x - padding)
+          .attr("y", bbox.y - padding)
+          .attr("width", bbox.width + 2 * padding)
+          .attr("height", bbox.height + 2 * padding)
+          .attr('rx', radius)
+          .attr('ry', radius)
+          .on('mouseover', activate)
+          .on('mouseout', deactivate)
+          .on('click', toggle)
+
+       addShadow.call(g.node(), d, i);
+       addGradient.call(g.node(), d, i);
     });
+  }
 
-    var answer_ids = [];
-    for (var a=0; a < answers.length; a++){
-        answers[a]['x'] = a*max_width+max_width/2;
-        answers[a]['y'] = 150;
-        answer_ids.push(answers[a].id)
+  function addGradient(d, i) {
+    var defs = d3.select(this).select('defs');
+    var gradient = defs.append('linearGradient')
+        .attr('id', 'gradient' + i)
+        .attr('x1', '0%')
+        .attr('y1', '0%')
+        .attr('x2', '0%')
+        .attr('y2', '100%');
+
+    gradient.append('stop')
+        .attr('id', 'gradient-start')
+        .attr('offset', '0%')
+
+    gradient.append('stop')
+        .attr('id', 'gradient-stop')
+        .attr('offset', '100%')
+
+    d3.select(this).select('rect').attr('fill', 'url(#gradient' + i + ")" );
+  }
+
+  function addShadow(d, i) {
+    var defs = d3.select(this).select('defs');
+    var rect = d3.select(this).select('rect').attr('filter', 'url(#dropShadow' + i + ")" );
+    var shadow = defs.append('filter')
+        .attr('id', 'dropShadow' + i)
+        .attr('x', rect.attr('x'))
+        .attr('y', rect.attr('y'))
+        .attr('width', rect.attr('width') + offsetX)
+        .attr('height', rect.attr('height') + offsetY)
+
+    shadow.append('feGaussianBlur')
+        .attr('in', 'SourceAlpha')
+        .attr('stdDeviation', 2)
+
+    shadow.append('feOffset')
+        .attr('dx', offsetX)
+        .attr('dy', offsetY);
+
+    var merge = shadow.append('feMerge');
+
+    merge.append('feMergeNode');
+    merge.append('feMergeNode').attr('in', 'SourceGraphic');
+  }
+
+  function activate() {
+    var gradient = d3.select(this.parentNode).select('linearGradient')
+    d3.select(this.parentNode).select("rect").classed('active', true)
+    if (!gradient.node()) return;
+    gradient.select('#gradient-start').classed('active', true)
+    gradient.select('#gradient-stop').classed('active', true)
+  }
+
+  function deactivate() {
+    var gradient = d3.select(this.parentNode).select('linearGradient')
+    d3.select(this.parentNode).select("rect").classed('active', false)
+    if (!gradient.node()) return;
+    gradient.select('#gradient-start').classed('active', false);
+    gradient.select('#gradient-stop').classed('active', false);
+  }
+
+  function toggle(d, i) {
+    if (d3.select(this).classed('pressed')) {
+        release.call(this, d, i);
+        deactivate.call(this, d, i);
+    } else {
+        press.call(this, d, i);
+        activate.call(this, d, i);
     }
+  }
 
-    var answer_nodes = make_nodes(post_panel, answers, true, 'answer_node', false)
+  function press(d, i) {
+    dispatch.call('press', this, d, i)
+    d3.select(this).classed('pressed', true);
+    var shadow = d3.select(this.parentNode).select('filter')
+    if (!shadow.node()) return;
+    shadow.select('feOffset').attr('dx', 0).attr('dy', 0);
+    shadow.select('feGaussianBlur').attr('stdDeviation', 0);
+  }
 
+  function release(d, i) {
+    dispatch.call('release', this, d, i)
+    my.clear.call(this, d, i);
+  }
 
-    //// Posts (inherit coords from parents)
-    function inherit_position(parent_ids, done, nodes, edges){
-        var up_next = [];
-        for (var p=0; p<parent_ids.length; p++){
-            // find edges connected to children
-            var child_edges = [];
-            for (var e=0; e<edges.length; e++){if (edges[e]['target'] == parent_ids[p]){child_edges.push(edges[e])}}
-            // for each child
-            var child_nodes = [];
-            for (var c=0; c<child_edges.length; c++){
-                var child_id = child_edges[c]['source'];
-                // if it's the first time dealing with this child
-                if ($.inArray(child_id, done)==-1){
-                    var child_node = nodes.filter(function (obj) {return obj.id == child_id});
+  my.clear = function(d, i) {
+    d3.select(this).classed('pressed', false);
+    var shadow = d3.select(this.parentNode).select('filter')
+    if (!shadow.node()) return;
+    shadow.select('feOffset').attr('dx', offsetX).attr('dy', offsetY);
+    shadow.select('feGaussianBlur').attr('stdDeviation', stdDeviation);
+  }
 
-                    // get coordinates of parent nodes
-                    var parent_x = [];
-                    var parent_y = [];
-                    for (var e=0; e<edges.length; e++){
-                        if (edges[e]['source']==child_id) {
-                            var parent = nodes.filter(function (obj) {return obj.id == edges[e].target});
-                            // console.log(JSON.stringify(parent))
-                            parent_x.push(parent[0]['x']);
-                            parent_y.push(parent[0]['y']);
-                        }
-                    }
-                    child_node[0]['x'] = parent_x.reduce(function(a,b){return a+b})/parent_x.length + Math.random();
-                    child_node[0]['y'] = parent_y.reduce(function(a,b){return a+b})/parent_x.length + 150 + Math.random();
+  my.on = function() {
+    var value = dispatch.on.apply(dispatch, arguments);
+    return value === dispatch ? my : value;
+  };
 
-                    done.push(child_id)
-                    up_next.push(child_id)
-                }
-            }
-        }
-        if (up_next.length > 0){
-            done = inherit_position(up_next, done, nodes, edges);
-        }
-        return done
-    }
-    inherit_position(answer_ids, [], nodes, edges);
-
-    var post_nodes = make_nodes(post_panel, posts, false, 'post_node', false)
-
-
-    //// Links
-    var links = make_links(edges)
-
-
-    //// Reply box
-    var reply_box = main.append('foreignObject');
-
-    reply_box.append('xhtml:div')
-        .classed('reply_box', true)
-        .attr('id', "reply_box")
-        .html('<textarea id="text_reply"></textarea><button onclick="submit_post()">Reply</button>')
-
-    var bcr = document.getElementById("reply_box").getBoundingClientRect()
-
-    reply_box.attr('width', bcr.width)
-        .attr('height', bcr.height)
-        .attr('x', width/2 - 80)
-        .attr('y', height - 100);
-
-
-    //// Final touches
-    var all_postpanel_nodes = post_panel.selectAll('g');
-    post_panel.call(drag_with_links(all_postpanel_nodes, links, true));
-    post_nodes.call(drag_this_with_links(links,false))
-    equilibrate_nodes(all_postpanel_nodes, links, 1000)
+  return my;
 }

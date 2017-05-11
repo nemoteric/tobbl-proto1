@@ -20,7 +20,7 @@
             <div id="question_{{ question.uid }}" class="question_container">
                 <div class="question">
                     <div class="score_box">
-                        <a class="score">{{ question.score }}</a>
+                        <a class="score">{{ question.score }}</a><br>
                         <button class="upvote" onclick="upvote({{ question.id }})">
                             {% if clicks[question.uid] %}
                                 -
