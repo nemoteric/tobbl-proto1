@@ -349,6 +349,10 @@ function update_node_position(data){
     node.attr('transform', function(d){
         return `translate(${data.x - d.x},${data.y - d.y})`
     })
+    
+    d3.selectAll('.link').each(function(){
+        reformat_link(this)
+    })
 }
 
 function post_html(post){
