@@ -13,13 +13,11 @@
         <script type="text/javascript" src="{{ url_for('static',filename='scripts/jquery.min.js') }}"></script>
         <script type="text/javascript" src="{{ url_for('static',filename='scripts/socket.io.min.js') }}"></script>
         <script type="text/javascript" src="{{ url_for('static',filename='scripts/d3.min.js') }}"></script>
+        <script type="text/javascript" src="{{ url_for('static',filename='scripts/base.js') }}"></script>
         <script>
-            function search() {
-                var terms = $('#search').val();
-                if (terms){
-                    window.location = '/results?key=' + encodeURIComponent(terms)
-                }
-            }
+            $(document).ready(function(){
+                base_ready()
+            })
         </script>
     {% endblock %}
   </head>
@@ -36,13 +34,14 @@
             {% endif %}
 
             <input type="image" class="search_button" src="{{ url_for('static',filename='images/search2.png') }}" onclick="search()"></input>
-            <input class="searchbar" type="text" id="search">
+            <input class="searchbar" type="text" id="search" value=""
+                   onfocus="if(this.value=='not active'){this.value=''}"
+                   onfocusout="if(this.value=='a'){this.value='not active'}">
 
         </div>
 
     <div id="content">
         {% block content %}
-
         {% endblock %}
     </div>
 

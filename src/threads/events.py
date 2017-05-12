@@ -6,7 +6,7 @@ import numpy as np
 
 @socketio.on('connect', namespace='/_thread')
 def connect():
-    print('\n.\n.\n.\n.Connected to thread\n.\n.\n.\n.') # For debugging purposes
+    pass
 
 
 @socketio.on('render_thread', namespace='/_thread')

@@ -114,3 +114,46 @@ def question_clicks(quids):
     return clicks
 
 
+def make_group_message(message):
+    result = list(
+        session.run("MATCH (U:User {username: {username}}) "
+                    "MERGE (GC:GroupChat {id: 'global'})<-[r:SAW]-(U) "
+                    "ON CREATE SET r.count_since_seen = 0 "
+                    "WITH U,GC,r "
+                    "MATCH (u:User)-[allR:SAW]->(GC) "
+                    "SET allR.count_since_seen = allR.count_since_seen + 1, r.count_since_seen = 0 "
+                    "WITH U,GC "
+                    "CREATE (GC)<-[:ELEMENT_OF]-(M:Message { props })<-[:AUTHOR]-(U) "
+                    "RETURN M ",
+                    {'username': current_user.username,
+                     'props':{'author': current_user.username,
+                              'time': time(),
+                              'body': message}}
+        ))[0][0].properties
+    return result
+
+
+def get_group_messages():
+    results = list(
+        session.run("MATCH (U:User {username: {username}}) "
+                    "WITH U "
+                    "OPTIONAL MATCH (M:Message)-[:ELEMENT_OF]->(GC:GroupChat {id: 'global'}) "
+                    "WITH M,U,GC "
+                    "MERGE (U)-[r:SAW]->(GC) "
+                    "SET r.count_since_seen = 0 "
+                    "WITH M ORDER BY M.time LIMIT 200 "
+                    "RETURN M ",
+                    {'username': current_user.username}))
+    return [res[0].properties for res in results]
+
+
+def count_since_seen():
+    return list(
+        session.run("MATCH (U:User {username: {username}}), (GC:GroupChat {id: 'global'}) "
+                    "WITH U,GC "
+                    "OPTIONAL MATCH (GC)<-[:ELEMENT_OF]-(M:Message) "
+                    "WITH U,GC, COUNT(M) as num "
+                    "MERGE (U)-[r:SAW]->(GC) "
+                    "ON CREATE SET r.count_since_seen = num "
+                    "RETURN r",
+                    {'username': current_user.username}))[0][0].properties['count_since_seen']

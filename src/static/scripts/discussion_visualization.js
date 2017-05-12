@@ -87,7 +87,7 @@ function render_question(features){
         head = features.head,
         relevant = features.relevant,
         svg = d3.select("svg"),
-        width = parseInt(svg.style('width').match(/\d+/)[0]),
+        width = parseInt(svg.style('width').match(/\d+/)[0]) ,
         height = parseInt(svg.style('height').match(/\d+/)[0]);
 
     // colors
@@ -158,7 +158,6 @@ function render_question(features){
         // .attr('stroke', '#808D8D')
         // .attr('stroke-width', 1)
         .style('fill', question_color);
-        console.log(question_panel)
 
 
     //// Question
@@ -168,8 +167,6 @@ function render_question(features){
         var question_node = make_nodes(question_panel, [head['node']], true, 'question_node', true)
         question_panel.select('rect').attr('height', 30 + parseInt(question_node.data()[0]['height']))
     }
-
-
 
 
     //// separate nodes by type
@@ -190,7 +187,7 @@ function render_question(features){
     var answer_ids = [];
     for (var a=0; a < answers.length; a++){
         answers[a]['x'] = 8;
-        answers[a]['y'] = a*100+ parseInt(question_panel.select('rect').attr('height')) + answer_spacing;
+        answers[a]['y'] = a*100 + parseInt(question_panel.select('rect').attr('height')) + answer_spacing;
         answer_ids.push(answers[a].id)
     }
 
@@ -393,13 +390,14 @@ function post_html(post){
                 `         <t id="score" class="post_score">${post['score']}</t>` +
                 `      </div>` +
                 `      <div class="right_footer">` +
-                `         <a onclick="reply(${post['id']}, 1)">Support</a>` +
-                `         <a onclick="reply(${post['id']}, 2)">Challenge</a>` +
+                `         <a id="sup" onclick="reply(${post['id']}, 1)">Support</a> |` +
+                `         <a id="chal" onclick="reply(${post['id']}, 2)">Challenge</a>` +
                 `      </div>` +
                 `   </div>` +
                 `</div>`
     }
 }
+
 function submit_post(answer){
     if (answer){
         var textbox = $(`.answer_box  textarea`);
@@ -439,38 +437,30 @@ function new_post(json){
         edges = json['edges'],
         done = false;
 
-    if (post.hasOwnProperty('answering')){
-        if (post['answering']){
-            // find right-most answer
-            var answers = d3.selectAll('.answer_node'),
-                num = 0,
-                x = 8,
-                y = answer_height;
+    if (post.hasOwnProperty('answering') & post['answering']){
+        // find right-most answer
+        var answers = d3.selectAll('.answer_node'),
+            num = 0,
+            x = 8,
+            y = parseInt(d3.select('.question_panel').select('rect').attr('height'));
 
-            answers.each(function(d){
-                y = Math.max(y,d.y + d.height + d.yt)
-                num += 1
-            })
+        answers.each(function(d){
+            y = Math.max(y,d.y + d.height + d.yt)
+            num += 1
+        })
 
-            post['x'] = x;
-            post['y'] = y + answer_spacing;
+        post['x'] = x;
+        post['y'] = y + answer_spacing;
 
-            var node = make_nodes(d3.select('.answer_panel'), [post], true, 'answer_node', false);
-            done = true;
-            edges = [];
+        var node = make_nodes(d3.select('.answer_panel'), [post], true, 'answer_node', false);
+        edges = [];
 
-            add_answer_button()
-    }}
-
-    if (!done) {
-        var targets = d3.select('.post_panel').selectAll('g'),
+        add_answer_button()
+    }else{
+        var targets = d3.selectAll('.a_node'),
             target_ids = []
             ys = [],
             xsum = 0;
-
-        if (targets.size()){
-            targets = d3.select('.answer_panel').selectAll('g')
-        }
 
         for (e in edges) {
             target_ids.push(edges[e]['target'])
@@ -485,7 +475,6 @@ function new_post(json){
 
         post['x'] = xsum / ys.length;
         post['y'] = Math.max.apply(Math, ys) + 150;
-
 
         var node = make_nodes(d3.select('.post_panel'), [post], false, 'post_node', false);
         var links = make_links(edges)
@@ -844,107 +833,98 @@ function reformat_link(this_link){
         });
 }
 
-function starting_positions(nodes, edges, width, height){
-    // Question node sits at the top
-    nodes[0]['x'] = width/2;
-    nodes[0]['y'] = 30;
-    nodes[0]['fixed'] = true;
-
-    //
-
-    // find number of connections on each node
-    var node_ids = nodes.map(function(node){return node.id});
-    for (e in edges){
-        var s = $.inArray(edges[e].source, node_ids),
-            t = $.inArray(edges[e].source, node_ids);
-
-        if (!nodes[s].hasOwnProperty('numlinks')){nodes[s]['numlinks'] = 0; nodes[s]['assigned']=0; nodes[s]['ang']=0}
-        if (!nodes[t].hasOwnProperty('numlinks')){nodes[t]['numlinks'] = 0; nodes[t]['assigned']=0; nodes[t]['ang']=0}
-
-        nodes[s].numlinks++;
-        nodes[t].numlinks++;
-    }
-
-    // define recursive function to find connectedness
-    function graph_connectedness(node, nodes, edges, node_ids){
-        // define function to sort list of pairs of connected neighbors by "most connected"
-        function connectedness(arr){
-            var res = [],
-                neighbors = [];
-            for (i in arr){ for (j in arr){ if (i<j) {
-                res.push(arr[i].filter(function(x){return $.inArray(x,arr[j]) != -1}).length);
-                neighbors.push([i,j]);
-            }}}
-
-            var sort_indices = new Array(neighbors.length);
-            for (var i = 0; i < neighbors.length; ++i) sort_indices[i] = i;
-            sort_indices.sort(function (a, b) { return res[a] > res[b] ? -1 : res[a] < res[b] ? 1 : 0; });
-
-            return sort_indices.map(function(i){return neighbors[i]});
-        }
-
-        var child_edges = [],
-            child_nodes = [],
-            descendants = [];
-
-        for (e in edges){
-            if (edges[e].target == nodes[node]){
-                child_edges.push(e);
-                child_nodes.push($.inArray(edges[e].source, node_ids))
-            }
-        }
-
-        for (n in child_nodes){descendants.push(graph_connectedness(child_nodes[n], nodes, edges, node_ids))}
-        nodes['child_nodes'] = child_nodes;
-        nodes['child_ordering'] = connectedness(descendants);
-
-        // if this node connects branches, i.e. connects outward to two other nodes, return it's index
-        if (edges.filter(function(e){edges[e].source==nodes[node]}).length > 1){
-            return descendants.reduce(function(x,y){return x.concat(y)}).concat(node)
-        }else {
-            return descendants.reduce(function (x, y) { return x.concat(y) })
-        }
-    }
-
-    // find nodes connected to head
-    var completed = [49];
-
-    var nodes_of_interest = [];
-    for (var e=0; e<edges.length; e++) {
-        if (edges[e].target == nodes[0].id && $.inArray(edges[e].source, completed) == -1) {
-            nodes_of_interest.push(edges[e].source)
-        }
-    }
-
-
-    // for (n in nodes_of_interest){
-    //     node
-    //     completed.push(nodes_of_interest[n])
-    // }
-
-
-
-
-    // random positions
-    for (var n=0; n<nodes.length; n++){
-        if (n==0){
-            // nodes[n]['x'] = width / 2;
-            // nodes[n]['y'] = height / 2;
-            // nodes[n]['fixed'] = true;
-        }else {
-            nodes[n]['x'] = width * Math.random();
-            nodes[n]['y'] = height * Math.random();
-            // nodes[n]['x'] = width/2 + Math.random();
-            // nodes[n]['y'] = height/2 + Math.random();
-            nodes[n]['fixed'] = false;
-        }
-        // nodes[n]['id'] = n;
-        nodes[n]['xt'] = 0;
-        nodes[n]['yt'] = 0;
-    }
-
-    return [nodes, edges]
-}
+// function starting_positions(nodes, edges, width, height){
+//     // Question node sits at the top
+//     nodes[0]['x'] = width/2;
+//     nodes[0]['y'] = 30;
+//     nodes[0]['fixed'] = true;
+//
+//     //
+//
+//     // find number of connections on each node
+//     var node_ids = nodes.map(function(node){return node.id});
+//     for (e in edges){
+//         var s = $.inArray(edges[e].source, node_ids),
+//             t = $.inArray(edges[e].source, node_ids);
+//
+//         if (!nodes[s].hasOwnProperty('numlinks')){nodes[s]['numlinks'] = 0; nodes[s]['assigned']=0; nodes[s]['ang']=0}
+//         if (!nodes[t].hasOwnProperty('numlinks')){nodes[t]['numlinks'] = 0; nodes[t]['assigned']=0; nodes[t]['ang']=0}
+//
+//         nodes[s].numlinks++;
+//         nodes[t].numlinks++;
+//     }
+//
+//     // define recursive function to find connectedness
+//     function graph_connectedness(node, nodes, edges, node_ids){
+//         // define function to sort list of pairs of connected neighbors by "most connected"
+//         function connectedness(arr){
+//             var res = [],
+//                 neighbors = [];
+//             for (i in arr){ for (j in arr){ if (i<j) {
+//                 res.push(arr[i].filter(function(x){return $.inArray(x,arr[j]) != -1}).length);
+//                 neighbors.push([i,j]);
+//             }}}
+//
+//             var sort_indices = new Array(neighbors.length);
+//             for (var i = 0; i < neighbors.length; ++i) sort_indices[i] = i;
+//             sort_indices.sort(function (a, b) { return res[a] > res[b] ? -1 : res[a] < res[b] ? 1 : 0; });
+//
+//             return sort_indices.map(function(i){return neighbors[i]});
+//         }
+//
+//         var child_edges = [],
+//             child_nodes = [],
+//             descendants = [];
+//
+//         for (e in edges){
+//             if (edges[e].target == nodes[node]){
+//                 child_edges.push(e);
+//                 child_nodes.push($.inArray(edges[e].source, node_ids))
+//             }
+//         }
+//
+//         for (n in child_nodes){descendants.push(graph_connectedness(child_nodes[n], nodes, edges, node_ids))}
+//         nodes['child_nodes'] = child_nodes;
+//         nodes['child_ordering'] = connectedness(descendants);
+//
+//         // if this node connects branches, i.e. connects outward to two other nodes, return it's index
+//         if (edges.filter(function(e){edges[e].source==nodes[node]}).length > 1){
+//             return descendants.reduce(function(x,y){return x.concat(y)}).concat(node)
+//         }else {
+//             return descendants.reduce(function (x, y) { return x.concat(y) })
+//         }
+//     }
+//
+//     // find nodes connected to head
+//     var completed = [49];
+//
+//     var nodes_of_interest = [];
+//     for (var e=0; e<edges.length; e++) {
+//         if (edges[e].target == nodes[0].id && $.inArray(edges[e].source, completed) == -1) {
+//             nodes_of_interest.push(edges[e].source)
+//         }
+//     }
+//
+//     // random positions
+//     for (var n=0; n<nodes.length; n++){
+//         if (n==0){
+//             // nodes[n]['x'] = width / 2;
+//             // nodes[n]['y'] = height / 2;
+//             // nodes[n]['fixed'] = true;
+//         }else {
+//             nodes[n]['x'] = width * Math.random();
+//             nodes[n]['y'] = height * Math.random();
+//             // nodes[n]['x'] = width/2 + Math.random();
+//             // nodes[n]['y'] = height/2 + Math.random();
+//             nodes[n]['fixed'] = false;
+//         }
+//         // nodes[n]['id'] = n;
+//         nodes[n]['xt'] = 0;
+//         nodes[n]['yt'] = 0;
+//     }
+//
+//     return [nodes, edges]
+// }
 
 function make_panels(svg, width, height){
     // Question panel
@@ -982,11 +962,11 @@ function make_nodes(panel, data, fixed, classed, center){
         'answer_node': '#9AD1D4',
         'question_node': '#F1F5F5'
     }
-
     var nodes = panel.selectAll('.node')
         .data(data).enter().append('g')
         .attr('id', function(d){ return 'node_' + d.id})
         .classed('fixed', fixed)
+        .classed('a_node', true)
         .classed(classed, true);
 
     var boxes = nodes.append('rect').classed('border_rect', true)
@@ -1165,14 +1145,9 @@ function add_answer_button(){
             button.on('click', function(){})
         })
 }
+function load_chat_panel(){
 
-
-
-
-
-
-
-
+}
 
 
 d3.button = function() {

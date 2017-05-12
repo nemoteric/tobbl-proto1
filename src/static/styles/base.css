@@ -1,4 +1,7 @@
-/*.main {width:100%; border: 1px solid black; overflow: hidden;}*/
+body{
+    background-color: #F1F5F5;
+    font-family: Helvetica;
+}
 
 .navbar {
     position: fixed;
@@ -23,10 +26,6 @@
     height: 34px;
     /*margin-top: 4px;*/
 }
-
-
-
-
 .navbar .icon {
     float: right;
     /*background-color: #C9C19F;*/
@@ -53,7 +52,6 @@
     background-color: transparent;
 
 }
-
 .navbar .search_button {
     float: right;
     /*background-color: #C9C19F;*/
@@ -67,12 +65,6 @@
     color: black;
 
 }
-body{
-    background-color: #F1F5F5;
-}
-
-
-
 
 div#content{
     position: fixed;
@@ -83,25 +75,93 @@ div#content{
     padding: 3px 6px;
 }
 
-
-.left-bar {width: 150px; float: left; height: 95%; padding: 5px;
-    border: 1px solid black;}
-
-/*#content {border: 1px solid black;}*/
-
-. { padding-left: 10px; padding-right: 10px}
-
-body {
-<<<<<<< HEAD
-    /*background-color: #1E8449  ;*/
-=======
-    background-color: #1E8449  ;
->>>>>>> master
-
+#chat_bar{
+    position: absolute;
+    right: 20px;
+    width: 275px;
+    height: 30px;
+    bottom: 30px;
+    background-color: #3D5A80;
+    border: 1px solid black;
+    border-radius: 10px 10px 0 0 ;
+}
+#chat_bar a{
+    position: inherit;
+    font-size: 14px;
+    color: white;
+    margin: 7px 0 0 75px;
 }
 
-h {
-    color: #3C3C3C;
+
+#chat_container{
+    width: 300px;
+    max-height: calc(100%-200px);
+    height: 550px;
+    border: solid black 1px;
+    position: absolute;
+    right: 20px;
+    bottom: 10px;
+    background-color: #3D5A80;
+    border-radius: 10px;
 }
+#chat_container > a{
+    color: white;
+    font-size: 12px;
+    float: right;
+    margin: 2px 8px;
+}
+#messages {
+    margin: 20px 8px 0 8px;
+    /*min-height: 300px;*/
+    border: solid black 1px;
+    /*min-height: calc(100% - 100px);*/
+    height: calc(100% - 100px);
+    background-color: #F1F5F5;
+    overflow: scroll;
+    position: relative;
+}
+.message {
+    margin-left: 5px;
+    margin-right: auto;
+    margin-top: 5px;
+    width: calc(100% - 25px);
+    border: 1px solid black;
+    padding: 7px;
+    border-radius: 5px;
+    background-color: #D1EFB5;
+}
+.message a{
+    display: block;
+    color: black;
+    font-size: 13px
+}
+.message .author{
+    left: 0;
+    font-weight: bold;
+}
+.message .body{
+    text-align: right;
+    margin-left: 30px;
+}
+
+
+#chat_reply_container{
+    /*position: absolute;*/
+    /*top: calc(100% - 100px)*/
+    padding: 10px;
+    width: 100%;
+}
+#chat_reply_container textarea{
+    font-family: Helvetica;
+    font-size: 14px;
+    float: left;
+    width: 235px;
+}
+#chat_reply_container button{
+    display: block;
+    position: inherit;
+    margin: 20px 0 0 0;
+}
+
 
 
