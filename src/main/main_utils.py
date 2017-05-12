@@ -148,7 +148,7 @@ def get_group_messages():
 
 
 def count_since_seen():
-    return list(
+    results = list(
         session.run("MATCH (U:User {username: {username}}), (GC:GroupChat {id: 'global'}) "
                     "WITH U,GC "
                     "OPTIONAL MATCH (GC)<-[:ELEMENT_OF]-(M:Message) "
@@ -159,4 +159,4 @@ def count_since_seen():
                     {'username': current_user.username}))
 
     if results:
-        return[0][0].properties['count_since_seen']
+        return results[0][0].properties['count_since_seen']
