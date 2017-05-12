@@ -156,4 +156,7 @@ def count_since_seen():
                     "MERGE (U)-[r:SAW]->(GC) "
                     "ON CREATE SET r.count_since_seen = num "
                     "RETURN r",
-                    {'username': current_user.username}))[0][0].properties['count_since_seen']
+                    {'username': current_user.username}))
+
+    if results:
+        return[0][0].properties['count_since_seen']
