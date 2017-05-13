@@ -13,7 +13,6 @@ function base_ready() {
         for (var m in msgs){
             append_message(msgs[m])
         }
-        $("#messages").scrollTop($("#messages")[0].scrollHeight);
     });
     socket.on('count_since_seen', function(num){ count_since_seen(num) });
 
@@ -35,8 +34,8 @@ function expand_chat(){
       `      <a onclick="collapse_chat()">close</a>` +
       `      <div id="messages"></div>` +
       `      <div id="chat_reply_container">` +
-      `          <textarea></textarea>` +
-      `          <button onclick="send_msg()">Reply</button>` +
+      `          <textarea onkeydown="if (event.keyCode == 13) send_message()"></textarea>` +
+      // `          <button onclick="send_msg()">Reply</button>` +
       `      </div>` +
       `</div>`
     ).appendTo($('#content'));
@@ -51,8 +50,15 @@ function collapse_chat(){
       `</div>`
     ).appendTo('#content')
 }
+function on_input(){
+    var key = window.event.keyCode;
+    console.log(key);
+    if(key == 13) { //Enter keycode
+        send_message();
+    }
+}
 
-function send_msg(){
+function send_message(){
     var textbox = $("#chat_reply_container textarea");
     base_socket().emit('group_message', textbox.val());
     textbox.val('')
@@ -65,6 +71,7 @@ function append_message(msg){
       `   <a class="body">${msg.body}</a>` +
       `</div>`
     ).appendTo($('#messages'));
+    $("#messages").scrollTop($("#messages")[0].scrollHeight);
 }
 
 function saw_message(){
