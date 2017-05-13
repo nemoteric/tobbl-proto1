@@ -13,7 +13,6 @@ function base_ready() {
         for (var m in msgs){
             append_message(msgs[m])
         }
-        $("#messages").scrollTop($("#messages")[0].scrollHeight);
     });
     socket.on('count_since_seen', function(num){ count_since_seen(num) });
 
@@ -65,6 +64,8 @@ function append_message(msg){
       `   <a class="body">${msg.body}</a>` +
       `</div>`
     ).appendTo($('#messages'));
+        $("#messages").scrollTop($("#messages")[0].scrollHeight);
+
 }
 
 function saw_message(){
