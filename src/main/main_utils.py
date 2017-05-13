@@ -142,7 +142,7 @@ def get_group_messages():
                     "MERGE (U)-[r:SAW]->(GC) "
                     "SET r.count_since_seen = 0 "
                     "WITH M ORDER BY M.time LIMIT 200 "
-                    "RETURN M ",
+                    "RETURN DISTINCT M ",
                     {'username': current_user.username}))
     return [res[0].properties for res in results]
 

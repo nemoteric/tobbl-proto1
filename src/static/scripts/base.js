@@ -64,14 +64,17 @@ function send_message(){
     textbox.val('')
 }
 function append_message(msg){
-    $('#chat_bar a').text(parseInt($('#chat_bar a').text().match(/\d+/))+1 + ' unread messages');
+    var messages = $("#messages"),
+        chatbar = $('#chat_bar a');
+    chatbar.text(parseInt(chatbar.text().match(/\d+/))+1 + ' unread messages');
     
     $(`<div class='message'>` +
       `   <a class="author">${msg.author}:</a>` +
       `   <a class="body">${msg.body}</a>` +
       `</div>`
-    ).appendTo($('#messages'));
-    $("#messages").scrollTop($("#messages")[0].scrollHeight);
+    ).appendTo(messages);
+
+    messages.scrollTop(messages[0].scrollHeight);
 }
 
 function saw_message(){
