@@ -172,9 +172,11 @@ function render_question(features){
 
     //// separate nodes by type
     var answers = [];
+    var comments = [];
     var posts = [];
     for (n in nodes){
         if (nodes[n]['answering']){answers.push(nodes[n])}
+        else if (nodes[n]['commenting']){comments.push(nodes[n])}
         else {posts.push(nodes[n])}
     }
 
@@ -263,6 +265,10 @@ function render_question(features){
     var post_nodes = make_nodes(post_panel, posts, false, 'post_node', false)
 
 
+    //// cComments
+    var comment_nodes = make_nodes(post_panel, comments, false, 'comment_node', false)
+
+
     //// Links
     var links = make_links(edges, true)
 
@@ -292,9 +298,10 @@ function render_question(features){
 
     //// Final touches
     // var all_postpanel_nodes = post_panel.selectAll('g');
-    post_panel.call(drag_with_links(post_nodes, links, false, false));
+    post_panel.call(drag_with_links(d3.select('.post_panel').selectAll('.a_node'), links, false, false));
     answer_panel.call(drag_with_links(answer_nodes, links, false, true));
     post_nodes.call(drag_this_with_links(links,false))
+    comment_nodes.call(drag_this_with_links(links,false))
     // equilibrate_nodes(post_nodes, links, 500)
     send_to_back(post_panel.node())
 }
@@ -369,15 +376,13 @@ function post_html(post){
                 `      <div class="author">${post['author']}:</div>` +
                 `      <div class="post_text">${post['body']}</div>` +
                 `   </div>` +
-                // `   <div class="post_footer">`+
-                // `      <div class="left_footer">` +
-                // `         <button class="upvote" onclick="upvote(${post['id']})">+</button>` +
-                // `         <t id="score" class="post_score">${post['score']}</t>` +
-                // `      </div>` +
-                // `      <div class="right_footer">` +
-                // `         <a onclick="reply(${post['id']}, 0)">Answer</a>` +
-                // `      </div>` +
-                // `   </div>` +
+                `</div>`
+    }else if(post['commenting']){
+        return `<div class="comment_post post" id="${post['id']}">` +
+                `   <div class="body_div">` +
+                `      <div class="author">${post['author']}:</div>` +
+                `      <div class="post_text">${post['body']}</div>` +
+                `   </div>` +
                 `</div>`
     }else{
         return `<div class="post" id="${post['id']}">` +
@@ -392,7 +397,8 @@ function post_html(post){
                 `      </div>` +
                 `      <div class="right_footer">` +
                 `         <a id="sup" onclick="reply(${post['id']}, 1)">Support</a> |` +
-                `         <a id="chal" onclick="reply(${post['id']}, 2)">Challenge</a>` +
+                `         <a id="chal" onclick="reply(${post['id']}, 2)">Challenge</a> |` +
+                `         <a id="com" onclick="reply(${post['id']}, 3)">Comment</a>` +
                 `      </div>` +
                 `   </div>` +
                 `</div>`
@@ -430,6 +436,9 @@ function reply(post_id, mode){
     if (mode==2){
         textbox.val(textbox.val() + `!@${post_id} `)
     }
+    if (mode==3){
+        textbox.val(textbox.val() + `@${post_id} `)
+    }
     textbox.focus();
 }
 function new_post(json){
@@ -438,7 +447,7 @@ function new_post(json){
         edges = json['edges'],
         done = false;
 
-    if (post.hasOwnProperty('answering') & post['answering']){
+    if (post['answering']){
         // find right-most answer
         var answers = d3.selectAll('.answer_node'),
             num = 0,
@@ -457,6 +466,31 @@ function new_post(json){
         edges = [];
 
         add_answer_button()
+    }else if (post['commenting']){
+        var targets = d3.selectAll('.a_node'),
+            target_ids = []
+            ys = [],
+            xsum = 0;
+
+        for (e in edges) {
+            target_ids.push(edges[e]['target'])
+        }
+
+        targets.each(function (d) {
+            if ($.inArray(d.id, target_ids) != -1) {
+                ys.push(parseInt(d.y));
+                xsum += d.x;
+            }
+        })
+
+        post['x'] = xsum / ys.length + 250;
+        post['y'] = Math.max.apply(Math, ys) + 150;
+        post['yt'] = 0;
+        post['xt'] = 0;
+
+        var node = make_nodes(d3.select('.post_panel'), [post], false, 'comment_node', false);
+        var links = make_links(edges, true)
+        node.call(drag_this_with_links(d3.selectAll('.link'), false))
     }else{
         var targets = d3.selectAll('.a_node'),
             target_ids = []
@@ -476,6 +510,8 @@ function new_post(json){
 
         post['x'] = xsum / ys.length;
         post['y'] = Math.max.apply(Math, ys) + 150;
+        post['yt'] = 0;
+        post['xt'] = 0;
 
         var node = make_nodes(d3.select('.post_panel'), [post], false, 'post_node', false);
         var links = make_links(edges)
@@ -961,7 +997,8 @@ function make_nodes(panel, data, fixed, classed, center){
     var colors = {
         'post_node': '#9AD1D4',
         'answer_node': '#9AD1D4',
-        'question_node': '#F1F5F5'
+        'question_node': '#F1F5F5',
+        'comment_node': 'white'
     }
     var nodes = panel.selectAll('.node')
         .data(data).enter().append('g')
@@ -1145,9 +1182,6 @@ function add_answer_button(){
 
             button.on('click', function(){})
         })
-}
-function load_chat_panel(){
-
 }
 
 

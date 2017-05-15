@@ -37,6 +37,7 @@ def render_thread(json):
     emit('rooms', ','.join(rooms()))
     emit('render_question', [features, clicks])
 
+
 @socketio.on('move_node', namespace='/_thread')
 def move_node(json):
     thread_utils.move_node(json)

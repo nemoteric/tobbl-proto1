@@ -15,7 +15,7 @@ def tobbl(element):
             session.run("MATCH (Q:Question), (U:User {username: {username}}) "
                         "WHERE Q.uid={quid} "
                         "WITH Q,U "
-                        "OPTIONAL MATCH (Q)<-[pR:ANSWER|CHALLENGE|SUPPORT*]-(P:Post) "
+                        "OPTIONAL MATCH (Q)<-[pR:ANSWER|CHALLENGE|SUPPORT|COMMENT*]-(P:Post) "
                         "WITH Q,U,pR,P "
                         "OPTIONAL MATCH (P)<-[uR:INTERACT]-(U) "
                         "RETURN pR,P,uR,Q ",
@@ -24,20 +24,20 @@ def tobbl(element):
         features['head'] = {'type': 'question',
                            'node': {'id': results[0][3].id, 'type': 'Question', **results[0][3].properties}}
         features['answerable'] = True; ## should be an attribute on node
-    if element['type']=='relationship':
-        results = list(
-            session.run("MATCH (Q:Question), (U:User {username: {username}}) "
-                        "WHERE Q.uid={quid} "
-                        "WITH Q,U "
-                        "OPTIONAL MATCH (Q)<-[pR:ANSWER|CHALLENGE|SUPPORT*]-(P:Post) "
-                        "WITH Q,U,pR,P "
-                        "OPTIONAL MATCH (P)<-[uR:INTERACT]-(U) "
-                        "RETURN pR,P,uR,Q ",
-                        {'quid': element['question_uid'],
-                         'username': current_user.username}))
-        features['head'] = {'type': 'question',
-                           'node': {'id': results[0][3].id, **results[0][3].properties}}
-        features['answerable'] = True; ## should be an attribute on node
+    # if element['type']=='relationship':
+    #     results = list(
+    #         session.run("MATCH (Q:Question), (U:User {username: {username}}) "
+    #                     "WHERE Q.uid={quid} "
+    #                     "WITH Q,U "
+    #                     "OPTIONAL MATCH (Q)<-[pR:ANSWER|CHALLENGE|SUPPORT*]-(P:Post) "
+    #                     "WITH Q,U,pR,P "
+    #                     "OPTIONAL MATCH (P)<-[uR:INTERACT]-(U) "
+    #                     "RETURN pR,P,uR,Q ",
+    #                     {'quid': element['question_uid'],
+    #                      'username': current_user.username}))
+    #     features['head'] = {'type': 'question',
+    #                        'node': {'id': results[0][3].id, **results[0][3].properties}}
+    #     features['answerable'] = True; ## should be an attribute on node
 
 
     nodes = [{**node.properties, 'id': node.id, 'type': list(node.labels)[0]}
@@ -105,7 +105,7 @@ def new_post(json): # Should be able to do this in one query, but doing it for e
     supporting = [int(ref[2:]) for ref in refs if re.match('\^', ref)]
     challenging = [int(ref[2:]) for ref in refs if re.match('!', ref)]
     # answering = [int(ref[2:]) for ref in refs if re.match('~', ref)]
-    replying = []#[int(ref[1:]) for ref in refs if re.match('@', ref)]
+    commenting = [int(ref[1:]) for ref in refs if re.match('@', ref)]
 
     json['body'] = re.sub('([~\^!]*@[0-9]+)', '', json['body']).strip()
 
@@ -130,6 +130,24 @@ def new_post(json): # Should be able to do this in one query, but doing it for e
                                       }))
 
         node = {**results[0][0].properties, **{'id': results[0][0].id}}
+        rels = [{'source': results[0][1].start, 'target': results[0][1].end, 'type': results[0][1].type}]
+
+    elif commenting:
+        results = list(
+            session.run("MATCH (u:User {username: {username}}), (cp:Post) " +
+                        "WHERE ID(cp) IN {commenting} " +
+                        "CREATE (cp)<-[rc:COMMENT]-(c:Post { props })<-[:AUTHOR]-(u) " +
+                        "RETURN c,rc ",
+                        {'commenting': commenting,
+                         'username': current_user.username,
+                         'props': {'body': json['body'],
+                                   'uid': get_uid('Post'),
+                                   'author': current_user.username,
+                                   'type': 'Post',
+                                   'commenting': True,
+                                   'time': time()}
+                         }))
+        node = {**results[0][0].properties, **{'id': results[0][0].id, }}
         rels = [{'source': results[0][1].start, 'target': results[0][1].end, 'type': results[0][1].type}]
 
     elif len(supporting) & len(challenging):
