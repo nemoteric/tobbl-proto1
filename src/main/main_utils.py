@@ -117,12 +117,13 @@ def question_clicks(quids):
 def make_group_message(message):
     result = list(
         session.run("MATCH (U:User {username: {username}}) "
+                    "WITH U "
                     "MERGE (GC:GroupChat {id: 'global'})<-[r:SAW]-(U) "
                     "ON CREATE SET r.count_since_seen = 0 "
                     "WITH U,GC,r "
                     "MATCH (u:User)-[allR:SAW]->(GC) "
                     "SET allR.count_since_seen = allR.count_since_seen + 1, r.count_since_seen = 0 "
-                    "WITH U,GC "
+                    "WITH DISTINCT U,GC "
                     "CREATE (GC)<-[:ELEMENT_OF]-(M:Message { props })<-[:AUTHOR]-(U) "
                     "RETURN M ",
                     {'username': current_user.username,
@@ -141,7 +142,7 @@ def get_group_messages():
                     "WITH M,U,GC "
                     "MERGE (U)-[r:SAW]->(GC) "
                     "SET r.count_since_seen = 0 "
-                    "WITH M ORDER BY M.time LIMIT 200 "
+                    "WITH M ORDER BY M.time "
                     "RETURN DISTINCT M ",
                     {'username': current_user.username}))
     return [res[0].properties for res in results]
