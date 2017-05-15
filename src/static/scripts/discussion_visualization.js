@@ -383,6 +383,11 @@ function post_html(post){
                 `      <div class="author">${post['author']}:</div>` +
                 `      <div class="post_text">${post['body']}</div>` +
                 `   </div>` +
+                `   <div class="post_footer">`+
+                `      <div class="right_footer">` +
+                `         <a id="com" onclick="reply(${post['id']}, 3)">Comment</a>` +
+                `      </div>` +
+                `   </div>` +
                 `</div>`
     }else{
         return `<div class="post" id="${post['id']}">` +
