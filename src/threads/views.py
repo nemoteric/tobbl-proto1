@@ -29,19 +29,21 @@ def view_thread(thread_id):
 def test():
     return render_template('test.html')
 
-
-@threads.route('/thread/delete/<thread_id>')
-def delete_thread(thread_id):
-    thread = get_nodes('MATCH (t:Thread {id: {id}}) RETURN t', {'id': thread_id})
-    if thread:
-        session.run('MATCH (t:Thread {id: {id}})-[r]->(n) DELETE t,r,n',{'id': thread_id})
-        flash('Thread ' + str(thread_id) + ' successfully deleted')
-    else:
-        flash('Thread ' + str(thread_id) + ' does not exist')
-    return redirect(url_for('main.index'))
+#
+# @threads.route('/thread/delete/<thread_id>')
+# @login_required
+# def delete_thread(thread_id):
+#     thread = get_nodes('MATCH (t:Thread {id: {id}}) RETURN t', {'id': thread_id})
+#     if thread:
+#         session.run('MATCH (t:Thread {id: {id}})-[r]->(n) DELETE t,r,n',{'id': thread_id})
+#         flash('Thread ' + str(thread_id) + ' successfully deleted')
+#     else:
+#         flash('Thread ' + str(thread_id) + ' does not exist')
+#     return redirect(url_for('main.index'))
 
 
 @threads.route('/q/<question_id>')
+@login_required
 def render_question(question_id):
     return render_template('threads/question.html')
 

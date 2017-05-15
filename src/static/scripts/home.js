@@ -20,6 +20,8 @@ function document_ready(){
     socket.on('update_clicks', function(clicks){
         update_clicks(clicks)
     });
+    
+    chat_bar();
 }
 
 

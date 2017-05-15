@@ -37,6 +37,7 @@ function document_ready(){
     socket.on('move_node', function(data) { update_node_position(data) })
 
     socket.emit('render_question', {'question_uid': question_uid(), 'type': 'question'});
+    chat_bar();
 }
 
 var drag_this = d3.drag().subject(this)
@@ -142,9 +143,9 @@ function render_question(features){
         .classed('answer_footer', true)
         .append('rect')
         .attr('width', width)
-        .attr('height', 100)
+        .attr('height', 60)
         .attr('x', 1)
-        .attr('y', height - 100 )
+        .attr('y', height - 60 )
         .style('fill', question_color);;
 
     var question_panel = main.selectAll('.question_panel')
@@ -280,7 +281,7 @@ function render_question(features){
     reply_box.attr('width', bcr.width)
         .attr('height', bcr.height)
         .attr('x', 270)
-        .attr('y', height - 90);
+        .attr('y', height - 51);
 
 
     //// New answer button
@@ -1107,17 +1108,17 @@ function add_answer_button(){
 
     answer_button
         .append('rect')
-        .attr('width', 100)
+        .attr('width', 106)
         .attr('height', 30)
         .style('fill', 'white')
         .style('stroke', 'black')
-        .attr('x', 82)
-        .attr('y', height - 83)
+        .attr('x', 79)
+        .attr('y', height - 43)
 
     answer_button
         .append('text')
-        .attr('x', 92)
-        .attr('y', height - 63)
+        .attr('x', 88)
+        .attr('y', height - 23)
         .text('New answer');
 
     answer_button

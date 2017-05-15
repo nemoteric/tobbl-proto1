@@ -16,7 +16,6 @@ function base_ready() {
     });
     socket.on('count_since_seen', function(num){ count_since_seen(num) });
 
-    collapse_chat();
     socket.emit('count_since_seen')
 }
 
@@ -27,11 +26,11 @@ function search() {
     }
 }
 
-function expand_chat(){
+function chat_window(){
     $('#chat_bar').remove();
     
     $(`<div id="chat_container"> ` +
-      `      <a onclick="collapse_chat()">close</a>` +
+      `      <a onclick="chat_bar()">close</a>` +
       `      <div id="messages"></div>` +
       `      <div id="chat_reply_container">` +
       `          <textarea onkeydown="if (event.keyCode == 13) send_message()"></textarea>` +
@@ -42,11 +41,11 @@ function expand_chat(){
     
     base_socket().emit('get_group_messages')
 }
-function collapse_chat(){
+function chat_bar(){
     $('#chat_container').remove();
 
     $(`<div id="chat_bar">` +
-      `    <a onclick="expand_chat() ">0 unread messages</a>` +
+      `    <a onclick="chat_window() ">0 unread messages</a>` +
       `</div>`
     ).appendTo('#content')
 }

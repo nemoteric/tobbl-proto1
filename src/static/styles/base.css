@@ -67,7 +67,8 @@ body{
 }
 
 div#content{
-    position: fixed;
+    /*position: fixed;*/
+    margin-top: 24px;
     width: 100%;
     max-height: calc(100%-25px);
     left: 0;
@@ -76,14 +77,14 @@ div#content{
 }
 
 #chat_bar{
-    position: absolute;
-    right: 20px;
+    position: fixed;
+    right: 15px;
     width: 275px;
     height: 30px;
-    bottom: 30px;
+    bottom: 0px;
     background-color: #3D5A80;
     border: 1px solid black;
-    border-radius: 10px 10px 0 0 ;
+    border-radius: 10px 10px 0 0;
 }
 #chat_bar a{
     position: inherit;
@@ -98,11 +99,11 @@ div#content{
     max-height: calc(100%-200px);
     height: 550px;
     border: solid black 1px;
-    position: absolute;
-    right: 20px;
-    bottom: 10px;
+    position: fixed;
+    right: 3px;
+    bottom: 0px;
     background-color: #3D5A80;
-    border-radius: 10px;
+    border-radius: 10px 10px 0 0;
 }
 #chat_container > a{
     color: white;
@@ -115,7 +116,7 @@ div#content{
     /*min-height: 300px;*/
     border: solid black 1px;
     /*min-height: calc(100% - 100px);*/
-    height: calc(100% - 100px);
+    height: calc(100% - 80px);
     background-color: #F1F5F5;
     overflow: scroll;
     position: relative;
@@ -157,11 +158,5 @@ div#content{
     float: left;
     width: 280px;
 }
-#chat_reply_container button{
-    display: block;
-    position: inherit;
-    margin: 20px 0 0 0;
-}
-
 
 

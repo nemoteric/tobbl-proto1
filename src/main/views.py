@@ -17,6 +17,7 @@ def home():
 
 
 @main.route('/results')
+@login_required
 def search():
     return render_template('main/results.html')
 
