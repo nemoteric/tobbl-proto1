@@ -234,11 +234,12 @@ def upvote(post_id):
     def update_score(id):
         rel = user_rels[id][0]
         dscore = rel['click'] + rel['sup'] - rel['chal'] - rel['score']
+        old_score = rel['score']
         rel['score'] += dscore
-        if rel['score'] < 0:
-            dscore = min(0,dscore-rel['score'])
-        if (rel['score'] > 0) & (dscore > rel['score']):
-            dscore = rel['score']
+        if old_score < 0:
+            dscore = max(0,dscore+rel['score'])
+        if old_score >= 0:
+            dscore = max(-old_score, dscore)
 
         if id in rels:
             for r in [r for r in rels[id] if r[1]!='ANSWER']:
